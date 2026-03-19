@@ -1051,7 +1051,11 @@ async function saveUser(u) {
     grade: u.grade||'', cls: u.cls||'', pw_changed: u.pwChanged||false
   };
   const { error } = await supa.from('users').upsert(row, {onConflict:'id'});
-  if (error) console.error('saveUser:', error);
+  if (error) {
+    console.error('saveUser error:', error);
+    toast('저장 실패: ' + error.message, 't-red');
+    return;
+  }
   await fetchUsers();
 }
 
@@ -1060,8 +1064,10 @@ async function saveUsers(arr) {
 }
 
 async function deleteUserById(uid) {
-  await supa.from('logs').delete().eq('user_id', uid);
-  await supa.from('users').delete().eq('id', uid);
+  const r1 = await supa.from('logs').delete().eq('user_id', uid);
+  if (r1.error) { console.error('logs delete error:', r1.error); toast('로그 삭제 실패: ' + r1.error.message, 't-red'); return; }
+  const r2 = await supa.from('users').delete().eq('id', uid);
+  if (r2.error) { console.error('users delete error:', r2.error); toast('계정 삭제 실패: ' + r2.error.message, 't-red'); return; }
   await fetchUsers();
   await fetchLogs();
 }
@@ -1081,7 +1087,8 @@ async function saveLog(l) {
 }
 
 async function deleteLogById(lid) {
-  await supa.from('logs').delete().eq('id', lid);
+  const r = await supa.from('logs').delete().eq('id', lid);
+  if (r.error) { console.error('log delete error:', r.error); toast('삭제 실패: ' + r.error.message, 't-red'); return; }
   await fetchLogs();
 }
 
