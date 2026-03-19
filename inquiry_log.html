@@ -1060,8 +1060,23 @@ async function saveUsers(arr) {
 }
 
 async function deleteUserById(uid) {
-  await supa.from('logs').delete().eq('user_id', uid);
-  await supa.from('users').delete().eq('id', uid);
+  // 1) 먼저 logs 삭제
+  const { error: logErr } = await supa.from('logs').delete().eq('user_id', uid);
+  if (logErr) {
+    console.error('deleteUserById logs:', logErr);
+    alert('로그 삭제 실패: ' + logErr.message);
+    return;
+  }
+
+  // 2) 그다음 users 삭제
+  const { error: userErr } = await supa.from('users').delete().eq('id', uid);
+  if (userErr) {
+    console.error('deleteUserById user:', userErr);
+    alert('교사 삭제 실패: ' + userErr.message);
+    return;
+  }
+
+  // 3) 새로 불러오기
   await fetchUsers();
   await fetchLogs();
 }
