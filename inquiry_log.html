@@ -1005,115 +1005,41 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 /* ══════════════════════════════
    SUPABASE CONFIG
 ══════════════════════════════ */
-const SUPA_URL = 'https://llgzqwrbqddngtxqlwkt.supabase.co';
+const SUPA_URL ='https://llgzqwrbqddngtxqlwkt.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsZ3pxd3JicWRkbmd0eHFsd2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4ODI0MDUsImV4cCI6MjA4OTQ1ODQwNX0.-mCxZo2fGxra4__s6pITO_Pg0yV17FC2YRuxeCE5Dac';
-const supa = window.supabase ? supabase.createClient(SUPA_URL, SUPA_KEY) : null;
-const IS_FILE_PROTOCOL = location.protocol === 'file:';
-const LS_USERS_KEY = 'inquiry_log_users';
-const LS_LOGS_KEY = 'inquiry_log_logs';
-let useLocalFallback = IS_FILE_PROTOCOL;
-let warnedStorageMode = false;
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function readLocalArray(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.error('localStorage read error:', err);
-    return [];
-  }
-}
-
-function writeLocalArray(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function switchToLocalFallback(reason, detail) {
-  useLocalFallback = true;
-  if (!warnedStorageMode) {
-    warnedStorageMode = true;
-    console.warn('[저장 모드] 로컬 저장소(localStorage)로 전환:', reason, detail || '');
-    if (IS_FILE_PROTOCOL) {
-      console.warn('[안내] file:// 로 열려 있어 브라우저 보안 제한이 걸릴 수 있습니다. 가능하면 http://localhost 환경에서 실행하세요.');
-    }
-  }
-}
-
-async function execSupa(queryBuilderFactory, actionLabel) {
-  if (!supa || useLocalFallback) {
-    return { data: null, error: { message: 'local fallback active' } };
-  }
-  try {
-    const { data, error } = await queryBuilderFactory();
-    if (error) {
-      console.error(actionLabel + ':', error);
-      if ([401, 403].includes(error.code) || /401|403|unauthorized|jwt|permission|row-level security/i.test(String(error.message || ''))) {
-        switchToLocalFallback(actionLabel, error.message || error.code);
-      }
-    }
-    return { data, error };
-  } catch (err) {
-    console.error(actionLabel + ' 예외:', err);
-    switchToLocalFallback(actionLabel, err.message || err);
-    return { data: null, error: err };
-  }
-}
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 /* ══════════════════════════════
-   DB — Supabase REST API + localStorage fallback
+   DB — Supabase REST API
 ══════════════════════════════ */
 // In-memory cache (갱신 후 로컬 반영)
 let _users = null;
 let _logs  = null;
 
 async function fetchUsers() {
-  if (useLocalFallback) {
-    _users = readLocalArray(LS_USERS_KEY);
-    return clone(_users);
-  }
-
-  const { data, error } = await execSupa(() => supa.from('users').select('*'), 'fetchUsers');
-  if (error) {
-    _users = readLocalArray(LS_USERS_KEY);
-    return clone(_users);
-  }
-
+  const { data, error } = await supa.from('users').select('*');
+  if (error) { console.error('fetchUsers:', error); return []; }
+  // Supabase column names → camelCase 변환
   _users = data.map(u => ({
     id: u.id, pw: u.pw, name: u.name, role: u.role,
-    grade: u.grade || '', cls: u.cls || '',
-    pwChanged: !!u.pw_changed
+    grade: u.grade||'', cls: u.cls||'',
+    pwChanged: u.pw_changed
   }));
-  writeLocalArray(LS_USERS_KEY, _users);
-  return clone(_users);
+  return _users;
 }
 
 async function fetchLogs() {
-  if (useLocalFallback) {
-    _logs = readLocalArray(LS_LOGS_KEY);
-    return clone(_logs);
-  }
-
-  const { data, error } = await execSupa(() => supa.from('logs').select('*').order('created_at', { ascending: true }), 'fetchLogs');
-  if (error) {
-    _logs = readLocalArray(LS_LOGS_KEY);
-    return clone(_logs);
-  }
-
+  const { data, error } = await supa.from('logs').select('*').order('created_at', {ascending:true});
+  if (error) { console.error('fetchLogs:', error); return []; }
   _logs = data.map(l => ({
-    id: l.id, userId: l.user_id, student: l.student, cls: l.cls || '',
-    stage: l.stage, title: l.title, subject: l.subject || '',
-    question: l.question || '', content: l.content, next: l.next || '',
+    id: l.id, userId: l.user_id, student: l.student, cls: l.cls||'',
+    stage: l.stage, title: l.title, subject: l.subject||'',
+    question: l.question||'', content: l.content, next: l.next||'',
     date: l.date, pts: l.pts, status: l.status,
-    rejectReason: l.reject_reason || '', rejectDate: l.reject_date || '',
-    rejectRead: !!l.reject_read
+    rejectReason: l.reject_reason||'', rejectDate: l.reject_date||'',
+    rejectRead: l.reject_read
   }));
-  writeLocalArray(LS_LOGS_KEY, _logs);
-  return clone(_logs);
+  return _logs;
 }
 
 function getLogs()  { return _logs  || []; }
@@ -1122,28 +1048,10 @@ function getUsers() { return _users || []; }
 async function saveUser(u) {
   const row = {
     id: u.id, pw: u.pw, name: u.name, role: u.role,
-    grade: u.grade || '', cls: u.cls || '', pw_changed: !!u.pwChanged
+    grade: u.grade||'', cls: u.cls||'', pw_changed: u.pwChanged||false
   };
-
-  if (useLocalFallback) {
-    const users = readLocalArray(LS_USERS_KEY);
-    const idx = users.findIndex(x => x.id === u.id);
-    const normalized = {
-      id: u.id, pw: u.pw, name: u.name, role: u.role,
-      grade: u.grade || '', cls: u.cls || '', pwChanged: !!u.pwChanged
-    };
-    if (idx >= 0) users[idx] = normalized;
-    else users.push(normalized);
-    writeLocalArray(LS_USERS_KEY, users);
-    _users = users;
-    return;
-  }
-
-  const { error } = await execSupa(() => supa.from('users').upsert(row, { onConflict: 'id' }), 'saveUser');
-  if (error) {
-    await saveUser({ ...u, pwChanged: !!u.pwChanged });
-    return;
-  }
+  const { error } = await supa.from('users').upsert(row, {onConflict:'id'});
+  if (error) console.error('saveUser:', error);
   await fetchUsers();
 }
 
@@ -1152,67 +1060,28 @@ async function saveUsers(arr) {
 }
 
 async function deleteUserById(uid) {
-  if (useLocalFallback) {
-    const users = readLocalArray(LS_USERS_KEY).filter(u => u.id !== uid);
-    const logs = readLocalArray(LS_LOGS_KEY).filter(l => l.userId !== uid);
-    writeLocalArray(LS_USERS_KEY, users);
-    writeLocalArray(LS_LOGS_KEY, logs);
-    _users = users;
-    _logs = logs;
-    return;
-  }
-
-  await execSupa(() => supa.from('logs').delete().eq('user_id', uid), 'deleteUserLogs');
-  await execSupa(() => supa.from('users').delete().eq('id', uid), 'deleteUser');
+  await supa.from('logs').delete().eq('user_id', uid);
+  await supa.from('users').delete().eq('id', uid);
   await fetchUsers();
   await fetchLogs();
 }
 
 async function saveLog(l) {
   const row = {
-    id: l.id, user_id: l.userId, student: l.student, cls: l.cls || '',
-    stage: l.stage, title: l.title, subject: l.subject || '',
-    question: l.question || '', content: l.content, next: l.next || '',
+    id: l.id, user_id: l.userId, student: l.student, cls: l.cls||'',
+    stage: l.stage, title: l.title, subject: l.subject||'',
+    question: l.question||'', content: l.content, next: l.next||'',
     date: l.date, pts: l.pts, status: l.status,
-    reject_reason: l.rejectReason || '', reject_date: l.rejectDate || '',
-    reject_read: !!l.rejectRead
+    reject_reason: l.rejectReason||'', reject_date: l.rejectDate||'',
+    reject_read: l.rejectRead||false
   };
-
-  if (useLocalFallback) {
-    const logs = readLocalArray(LS_LOGS_KEY);
-    const normalized = {
-      id: l.id, userId: l.userId, student: l.student, cls: l.cls || '',
-      stage: l.stage, title: l.title, subject: l.subject || '',
-      question: l.question || '', content: l.content, next: l.next || '',
-      date: l.date, pts: l.pts, status: l.status,
-      rejectReason: l.rejectReason || '', rejectDate: l.rejectDate || '',
-      rejectRead: !!l.rejectRead
-    };
-    const idx = logs.findIndex(x => x.id === l.id);
-    if (idx >= 0) logs[idx] = normalized;
-    else logs.push(normalized);
-    writeLocalArray(LS_LOGS_KEY, logs);
-    _logs = logs;
-    return;
-  }
-
-  const { error } = await execSupa(() => supa.from('logs').upsert(row, { onConflict: 'id' }), 'saveLog');
-  if (error) {
-    await saveLog({ ...l, rejectRead: !!l.rejectRead });
-    return;
-  }
+  const { error } = await supa.from('logs').upsert(row, {onConflict:'id'});
+  if (error) console.error('saveLog:', error);
   await fetchLogs();
 }
 
 async function deleteLogById(lid) {
-  if (useLocalFallback) {
-    const logs = readLocalArray(LS_LOGS_KEY).filter(l => l.id !== lid);
-    writeLocalArray(LS_LOGS_KEY, logs);
-    _logs = logs;
-    return;
-  }
-
-  await execSupa(() => supa.from('logs').delete().eq('id', lid), 'deleteLog');
+  await supa.from('logs').delete().eq('id', lid);
   await fetchLogs();
 }
 
@@ -1632,11 +1501,11 @@ async function deleteLog(logId) {
   await afterChange();
   toast('삭제되었습니다.', 't-red');
 }
-async function deleteUser(userId) {
-  if (!confirm('이 계정을 삭제하시겠습니까?
-해당 사용자의 탐구 로그도 함께 삭제됩니다.')) return;
-  await deleteUserById(userId);
-  await afterChange();
+function deleteUser(userId) {
+  if (!confirm('이 계정을 삭제하시겠습니까?\n해당 사용자의 탐구 로그도 함께 삭제됩니다.')) return;
+  saveUsers(getUsers().filter(u => u.id !== userId));
+  saveLogs(getLogs().filter(l => l.userId !== userId));
+  afterChange();
   toast('계정이 삭제되었습니다.', 't-red');
 }
 async function resetPw(userId) {
