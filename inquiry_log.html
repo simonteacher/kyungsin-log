@@ -1888,9 +1888,16 @@ function updateSingleLogModal(logId) {
   renderAdmOverview();
 }
 
-// backdrop clicks
-document.getElementById('stu-logs-modal').addEventListener('click', function(e) { if(e.target===this) closeStuLogsModal(); });
-document.getElementById('single-log-modal').addEventListener('click', function(e) { if(e.target===this) closeSingleLogModal(); });
+// backdrop clicks - DOM 완전 로드 후 실행
+document.addEventListener('DOMContentLoaded', function() {
+  const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
+  safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
+  safeOn('single-log-modal',    function(e){ if(e.target===this) closeSingleLogModal(); });
+  safeOn('add-modal',           function(e){ if(e.target===this) closeModal(); });
+  safeOn('log-detail-modal',    function(e){ if(e.target===this) closeLogDetail(); });
+  safeOn('reject-modal',        function(e){ if(e.target===this) closeRejectModal(); });
+  safeOn('reject-notify-modal', function(e){ if(e.target===this) closeRejectNotify(); });
+});
 function renderAdmStudents() {
   const q    = (document.getElementById('stu-search')?.value || '').trim();
   const logs = getLogs();
@@ -1957,7 +1964,6 @@ async function doAddUser() {
   renderAdmOverview();
   toast(`✅ ${name} ${modalRole==='student'?'학생':'교사'}이 추가되었습니다.`, 't-blue');
 }
-document.getElementById('add-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
 
 /* ══════════════════════════════
    LOG DETAIL MODAL (ADMIN)
@@ -2038,9 +2044,6 @@ function renderLdmContent() {
   }).join('');
 }
 
-document.getElementById('log-detail-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeLogDetail();
-});
 
 /* ══════════════════════════════
    EXCEL BULK IMPORT
@@ -2537,12 +2540,6 @@ function goRewrite() {
 }
 
 // reject modal backdrop
-document.getElementById('reject-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeRejectModal();
-});
-document.getElementById('reject-notify-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeRejectNotify();
-});
 
 // ── APP STARTUP
 (async () => {
