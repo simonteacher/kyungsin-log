@@ -1060,23 +1060,8 @@ async function saveUsers(arr) {
 }
 
 async function deleteUserById(uid) {
-  // 1) 먼저 logs 삭제
-  const { error: logErr } = await supa.from('logs').delete().eq('user_id', uid);
-  if (logErr) {
-    console.error('deleteUserById logs:', logErr);
-    alert('로그 삭제 실패: ' + logErr.message);
-    return;
-  }
-
-  // 2) 그다음 users 삭제
-  const { error: userErr } = await supa.from('users').delete().eq('id', uid);
-  if (userErr) {
-    console.error('deleteUserById user:', userErr);
-    alert('교사 삭제 실패: ' + userErr.message);
-    return;
-  }
-
-  // 3) 새로 불러오기
+  await supa.from('logs').delete().eq('user_id', uid);
+  await supa.from('users').delete().eq('id', uid);
   await fetchUsers();
   await fetchLogs();
 }
@@ -1516,12 +1501,12 @@ async function deleteLog(logId) {
   await afterChange();
   toast('삭제되었습니다.', 't-red');
 }
-async function deleteUser(userId) {
+function deleteUser(userId) {
   if (!confirm('이 계정을 삭제하시겠습니까?\n해당 사용자의 탐구 로그도 함께 삭제됩니다.')) return;
-  await deleteUserById(userId);
-  await afterChange();
+  saveUsers(getUsers().filter(u => u.id !== userId));
+  saveLogs(getLogs().filter(l => l.userId !== userId));
+  afterChange();
   toast('계정이 삭제되었습니다.', 't-red');
-}
 }
 async function resetPw(userId) {
   if (!confirm('이 계정의 비밀번호를 초기화하시겠습니까?\n다음 로그인 시 비밀번호 변경이 요구됩니다.')) return;
