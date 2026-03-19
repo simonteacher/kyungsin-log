@@ -541,9 +541,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     <button class="tab-btn" onclick="gotoPage('ranking',this,'s')">🏆 마일리지 랭킹</button>
   </div>
   <div class="tab-nav" id="ttabs" style="display:none;">
-    <button class="tab-btn active" onclick="gotoPage('treview',this,'t')">📋 승인 대기 <span class="badge-cnt" id="t-badge">0</span></button>
-    <button class="tab-btn" onclick="gotoPage('tallogs',this,'t')">📁 전체 로그 현황</button>
-    <button class="tab-btn" onclick="gotoPage('tranking',this,'t')">🏆 마일리지 현황</button>
+    <button class="tab-btn active" onclick="gotoPage('t-overview',this,'t')">📊 현황</button>
+    <button class="tab-btn" onclick="gotoPage('treview',this,'t')">📋 승인 대기 <span class="badge-cnt" id="t-badge">0</span></button>
+    <button class="tab-btn" onclick="gotoPage('t-stulist',this,'t')">🌸 학생 현황</button>
+    <button class="tab-btn" onclick="gotoPage('tallogs',this,'t')">📁 전체 로그</button>
+    <button class="tab-btn" onclick="gotoPage('tranking',this,'t')">🏆 마일리지</button>
   </div>
   <div class="app-main">
     <!-- 대시보드 -->
@@ -746,6 +748,46 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
         <div class="rank-list" id="rank-list"></div>
       </div>
     </div>
+    <!-- 교사: 전체 현황 대시보드 -->
+    <div id="page-t-overview" class="page">
+      <div class="page-hdr"><h1 id="t-greet">안녕하세요 👩‍🏫</h1><p>2026학년도 탐구 로그 현황입니다.</p></div>
+      <div class="stats-row">
+        <div class="stat-card sc-r"><div class="s-label">전체 학생 수</div><div class="s-val" id="t-ov-students">0</div><div class="s-sub" style="color:var(--rose);">등록 학생</div></div>
+        <div class="stat-card sc-l"><div class="s-label">전체 탐구 로그</div><div class="s-val" id="t-ov-logs">0</div><div class="s-sub" style="color:var(--muted);">누적 제출</div></div>
+        <div class="stat-card sc-p"><div class="s-label">승인 대기</div><div class="s-val" id="t-ov-pend" style="color:var(--orange);">0</div><div class="s-sub" style="color:var(--orange);">검토 필요</div></div>
+        <div class="stat-card sc-g"><div class="s-label">총 적립 마일리지</div><div class="s-val" id="t-ov-pts" style="color:var(--green);">0</div><div class="s-sub" style="color:var(--green);">pt</div></div>
+      </div>
+      <!-- 최근 대기 목록 -->
+      <div class="sec-hd" style="margin-top:8px;">
+        <h2>⏳ 최근 승인 대기 로그</h2>
+        <a onclick="gotoPage('treview',document.querySelectorAll('#ttabs .tab-btn')[1],'t')">전체 보기 →</a>
+      </div>
+      <div class="log-list" id="t-ov-pending-list"></div>
+    </div>
+
+    <!-- 교사: 학생 현황 (조회만, 추가/삭제 없음) -->
+    <div id="page-t-stulist" class="page">
+      <div class="page-hdr"><h1>🌸 학생 현황</h1><p>학생별 탐구 로그 현황을 확인하세요.</p></div>
+      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div class="sec-hd" style="padding:14px 20px;border-bottom:1px solid var(--border);margin-bottom:0;">
+          <h2>학생 목록 <span id="t-stu-cnt" style="font-size:.79rem;color:var(--muted);margin-left:6px;font-weight:400;"></span></h2>
+          <input style="padding:6px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:.81rem;font-family:'Noto Sans KR',sans-serif;outline:none;min-width:160px;" type="text" id="t-stu-search" placeholder="이름 검색..." oninput="renderTeacherStudents()"/>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">이름</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">학년/반</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">전체</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">승인</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">대기</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">마일리지</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">단계별 로그</th>
+          </tr></thead>
+          <tbody id="t-stu-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 교사: 승인 -->
     <div id="page-treview" class="page">
       <div class="page-hdr"><h1>📋 탐구 로그 승인 관리</h1><p>학생이 제출한 탐구 로그를 검토하고 승인 또는 반려하세요.</p></div>
@@ -1268,8 +1310,8 @@ function enterApp() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   if (isTeacher) {
     document.querySelectorAll('#ttabs .tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
-    document.getElementById('page-treview').classList.add('active');
-    renderTeacherPending();
+    document.getElementById('page-t-overview').classList.add('active');
+    renderTeacherOverview();
     updateTBadge();
   } else {
     document.querySelectorAll('#stabs .tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
@@ -1311,9 +1353,11 @@ function gotoPage(pageId, btn, tabSet) {
   if (pageId === 'dash')     { renderDash(); renderRecent(); checkRejectNotify(); }
   if (pageId === 'mylogs')   { renderMyLogs('all'); }
   if (pageId === 'ranking')  { renderRanking(); }
-  if (pageId === 'treview')  { renderTeacherPending(); updateTBadge(); }
-  if (pageId === 'tallogs')  { renderTAllLogs(); }
-  if (pageId === 'tranking') { renderTRanking(); }
+  if (pageId === 't-overview') { renderTeacherOverview(); updateTBadge(); }
+  if (pageId === 't-stulist')  { renderTeacherStudents(); }
+  if (pageId === 'treview')    { renderTeacherPending(); updateTBadge(); }
+  if (pageId === 'tallogs')    { renderTAllLogs(); }
+  if (pageId === 'tranking')   { renderTRanking(); }
 }
 
 async function gotoAdm(pageId, btn) {
@@ -1536,7 +1580,9 @@ async function afterChange() {
     renderAdmOverview(); renderAdmPending(); renderAdmLogs();
     renderAdmStudents(); renderAdmTeachers(); renderAdmRanking();
   } else if (CU.role === 'teacher') {
-    renderTeacherPending(); renderTAllLogs(); renderTRanking(); updateTBadge();
+    renderTeacherOverview();
+    renderTeacherPending(); renderTAllLogs(); renderTRanking();
+    renderTeacherStudents(); updateTBadge();
   } else if (CU.role === 'student') {
     renderDash(); renderRecent(); renderStageOpts();
   }
@@ -1652,6 +1698,68 @@ function renderRanking() {
 /* ══════════════════════════════
    RENDER: TEACHER
 ══════════════════════════════ */
+/* ══════════════════════════════
+   RENDER: TEACHER OVERVIEW & STUDENT LIST
+══════════════════════════════ */
+function renderTeacherOverview() {
+  const users = getUsers();
+  const logs  = getLogs();
+  const stus  = users.filter(u => u.role === 'student');
+  const pend  = logs.filter(l => l.status === 'pending');
+  const pts   = logs.filter(l => l.status === 'approved').reduce((s,l) => s+l.pts, 0);
+
+  document.getElementById('t-greet').textContent = `안녕하세요, ${CU.name} 선생님 👩‍🏫`;
+  document.getElementById('t-ov-students').textContent = stus.length;
+  document.getElementById('t-ov-logs').textContent     = logs.length;
+  document.getElementById('t-ov-pend').textContent     = pend.length;
+  document.getElementById('t-ov-pts').textContent      = pts;
+
+  // 최근 대기 로그 (최대 5개)
+  const el = document.getElementById('t-ov-pending-list');
+  if (!pend.length) {
+    el.innerHTML = `<div class="empty-state"><div class="es-icon">🌸</div><p>승인 대기 중인 탐구 로그가 없습니다.</p></div>`;
+    return;
+  }
+  el.innerHTML = pend.slice(0,5).map(l => `
+    <div class="log-row" onclick="gotoPage('treview',document.querySelectorAll('#ttabs .tab-btn')[1],'t')">
+      <div class="log-icon ${['','li-1','li-2','li-3','li-4'][l.stage]}">${l.stage}단계</div>
+      <div class="log-body"><h4>${l.title}</h4><p>🌸 ${l.student}${l.cls?' ('+l.cls+')':''} · ${l.date}</p></div>
+      <div class="log-meta"><div class="pts-wait">⏳ 대기</div><div style="margin-top:3px;font-size:.72rem;color:var(--muted);">클릭하여 승인</div></div>
+    </div>`).join('');
+}
+
+function renderTeacherStudents() {
+  const q    = (document.getElementById('t-stu-search')?.value || '').trim();
+  const logs = getLogs();
+  let stus   = getUsers().filter(u => u.role === 'student');
+  if (q) stus = stus.filter(u => u.name.includes(q));
+
+  document.getElementById('t-stu-cnt').textContent = `총 ${stus.length}명`;
+  const tbody = document.getElementById('t-stu-tbody');
+  if (!stus.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);font-size:.88rem;">등록된 학생이 없습니다.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = stus.map(u => {
+    const uLogs    = logs.filter(l => l.userId === u.id);
+    const approved = uLogs.filter(l => l.status === 'approved');
+    const pending  = uLogs.filter(l => l.status === 'pending');
+    const pts      = approved.reduce((s,l) => s+l.pts, 0);
+    const clsStr   = [u.grade, u.cls].filter(Boolean).join(' ') || '—';
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 16px;font-weight:700;color:var(--navy);">${u.name}</td>
+      <td style="padding:10px 16px;color:var(--muted);font-size:.83rem;">${clsStr}</td>
+      <td style="padding:10px 16px;font-weight:700;">${uLogs.length}건</td>
+      <td style="padding:10px 16px;color:var(--green);font-weight:700;">${approved.length}</td>
+      <td style="padding:10px 16px;color:var(--orange);font-weight:700;">${pending.length}</td>
+      <td style="padding:10px 16px;color:var(--rose);font-weight:700;">${pts}pt</td>
+      <td style="padding:10px 16px;">
+        <button class="filter-btn active" style="font-size:.76rem;padding:5px 12px;" onclick="openLogDetail('${u.id}')">📋 단계별 보기</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
 function updateTBadge() {
   const c = getLogs().filter(l => l.status === 'pending').length;
   const e1 = document.getElementById('t-badge'), e2 = document.getElementById('pq-cnt');
