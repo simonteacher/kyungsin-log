@@ -776,7 +776,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
             <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">이름</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">학년/반</th>
+            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">학년/반/번호</th>
             <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">전체</th>
             <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">승인</th>
             <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">대기</th>
@@ -883,7 +883,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
         <div class="adm-card-hd"><h3>학생 목록 <span id="a-stu-cnt" style="font-size:.79rem;color:var(--muted);margin-left:5px;"></span></h3>
           <div class="adm-card-hd-r"><input class="adm-search" type="text" id="stu-search" placeholder="이름·아이디 검색..." oninput="renderAdmStudents()"/><button class="btn-adm-primary" onclick="openModal('student')">+ 학생 추가</button></div>
         </div>
-        <table class="adm-table"><thead><tr><th>이름</th><th>아이디</th><th>학년/반</th><th>로그</th><th>마일리지</th><th>레벨</th><th>비번상태</th><th>작업</th></tr></thead><tbody id="a-stu-tbody"></tbody></table>
+        <table class="adm-table"><thead><tr><th>이름</th><th>아이디</th><th>학년/반/번호</th><th>로그</th><th>마일리지</th><th>레벨</th><th>비번상태</th><th>작업</th></tr></thead><tbody id="a-stu-tbody"></tbody></table>
       </div>
     </div>
     <!-- 교사 관리 -->
@@ -907,8 +907,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
       <div id="bulk-student-panel">
         <div class="excel-template">
           📋 <strong>엑셀 파일 형식 (학생)</strong> — 첫 번째 행은 헤더(제목)로 사용됩니다.<br/>
-          열 순서: <code>아이디</code> <code>비밀번호</code> <code>이름</code> <code>학년</code> <code>반</code><br/>
-          예시: <code>hong2026</code> | <code>hong1234</code> | <code>홍길동</code> | <code>2학년</code> | <code>3반</code><br/>
+          열 순서: <code>아이디</code> <code>비밀번호</code> <code>이름</code> <code>학년</code> <code>반</code> <code>번호</code><br/>
+          예시: <code>hong2026</code> | <code>hong1234</code> | <code>홍길동</code> | <code>2학년</code> | <code>3반</code> | <code>15</code><br/>
           ※ 비밀번호는 초기 비밀번호이며, 학생이 최초 로그인 시 변경해야 합니다.
         </div>
         <div class="excel-zone" id="drop-stu" onclick="document.getElementById('file-stu').click()" ondragover="onDragOver(event,'drop-stu')" ondragleave="onDragLeave('drop-stu')" ondrop="onDrop(event,'stu')">
@@ -1016,9 +1016,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     <div class="fg"><label>아이디 *</label><input type="text" id="m-id" placeholder="영문+숫자"/></div>
     <div class="fg"><label>초기 비밀번호 *</label><input type="password" id="m-pw" placeholder="초기 비밀번호"/></div>
     <div id="m-stu-fields">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;">
         <div class="fg"><label>학년</label><select id="m-grade"><option value="">학년</option><option>1학년</option><option>2학년</option><option>3학년</option></select></div>
         <div class="fg"><label>반</label><select id="m-cls"><option value="">반</option><option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option><option>6반</option><option>7반</option><option>8반</option></select></div>
+        <div class="fg"><label>번호</label><input type="number" id="m-num" placeholder="번호" min="1" max="50" style="text-align:center;"/></div>
       </div>
     </div>
     <div id="m-err" class="err-msg" style="margin-top:.4rem;"></div>
@@ -1064,7 +1065,7 @@ async function fetchUsers() {
   // Supabase column names → camelCase 변환
   _users = data.map(u => ({
     id: u.id, pw: u.pw, name: u.name, role: u.role,
-    grade: u.grade||'', cls: u.cls||'',
+    grade: u.grade||'', cls: u.cls||'', num: u.num||'',
     pwChanged: u.pw_changed
   }));
   return _users;
@@ -1090,7 +1091,7 @@ function getUsers() { return _users || []; }
 async function saveUser(u) {
   const row = {
     id: u.id, pw: u.pw, name: u.name, role: u.role,
-    grade: u.grade||'', cls: u.cls||'', pw_changed: u.pwChanged||false
+    grade: u.grade||'', cls: u.cls||'', num: u.num||'', pw_changed: u.pwChanged||false
   };
   const { error } = await supa.from('users').upsert(row, {onConflict:'id'});
   if (error) {
@@ -1301,7 +1302,7 @@ function doLogout() {
 function enterApp() {
   document.getElementById('app-screen').style.display = 'block';
   const isTeacher = CU.role === 'teacher';
-  const clsStr    = [CU.grade, CU.cls].filter(Boolean).join(' ');
+  const clsStr    = [CU.grade, CU.cls, CU.num ? CU.num+'번' : ''].filter(Boolean).join(' ');
   document.getElementById('user-label').textContent = isTeacher
     ? `👩‍🏫 ${CU.name}`
     : `🌸 ${clsStr} ${CU.name}`;
@@ -1485,7 +1486,7 @@ async function submitLog() {
     content = `[탐구 방법]\n${method}\n\n[탐구 결과]\n${result}\n\n[결론 및 느낀 점]\n${conclusion}`;
   }
 
-  const clsStr = [CU.grade, CU.cls].filter(Boolean).join(' ');
+  const clsStr = [CU.grade, CU.cls, CU.num ? CU.num+'번' : ''].filter(Boolean).join(' ');
   const logs   = getLogs();
   logs.push({
     id:      Date.now(),
@@ -1681,7 +1682,7 @@ function renderRanking() {
   const users = getUsers(), logs = getLogs();
   const rows  = users.filter(u => u.role==='student').map(u => {
     const al  = logs.filter(l => l.userId===u.id && l.status==='approved');
-    return { name:u.name, cls:[u.grade,u.cls].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length, isMe:CU&&u.id===CU.id };
+    return { name:u.name, cls:[u.grade,u.cls,u.num?u.num+'번':''].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length, isMe:CU&&u.id===CU.id };
   }).sort((a,b) => b.pts - a.pts);
   const el = document.getElementById('rank-list');
   if (!rows.length) { el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);">아직 랭킹 데이터가 없습니다.</div>`; return; }
@@ -1804,7 +1805,7 @@ function renderTRanking() {
   const users = getUsers(), logs = getLogs();
   const rows  = users.filter(u=>u.role==='student').map(u=>{
     const al = logs.filter(l=>l.userId===u.id&&l.status==='approved');
-    return { name:u.name, cls:[u.grade,u.cls].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length };
+    return { name:u.name, cls:[u.grade,u.cls,u.num?u.num+'번':''].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length };
   }).sort((a,b)=>b.pts-a.pts);
   document.getElementById('t-rank-list').innerHTML = rows.map((r,i)=>{
     const n=i+1, medal=n===1?'🥇':n===2?'🥈':n===3?'🥉':n;
@@ -2025,7 +2026,7 @@ function renderAdmStudents() {
     : stus.map(u => {
         const al  = logs.filter(l => l.userId===u.id && l.status==='approved');
         const pts = al.reduce((s,l)=>s+l.pts, 0);
-        return `<tr><td>${u.name}</td><td><code style="font-size:.77rem;background:#f0f4f8;padding:2px 7px;border-radius:4px;">${u.id}</code></td><td>${[u.grade,u.cls].filter(Boolean).join(' ')||'—'}</td><td><button class="btn-sm" style="background:var(--adm-blue-lt);color:var(--adm-blue);" onclick="openLogDetail('${u.id}')">${al.length}건 보기</button></td><td><strong style="color:var(--rose);">${pts}pt</strong></td><td>${getLvl(pts)}</td><td>${pwStateBadge(u.pwChanged)}</td><td style="white-space:nowrap;"><button class="btn-sm btn-sm-del" onclick="deleteUser('${u.id}')">삭제</button> <button class="btn-sm" style="background:#e8f0fd;color:var(--adm-blue);" onclick="resetPw('${u.id}')">비번초기화</button></td></tr>`;
+        return `<tr><td>${u.name}</td><td><code style="font-size:.77rem;background:#f0f4f8;padding:2px 7px;border-radius:4px;">${u.id}</code></td><td>${[u.grade,u.cls,u.num?u.num+'번':''].filter(Boolean).join(' ')||'—'}</td><td><button class="btn-sm" style="background:var(--adm-blue-lt);color:var(--adm-blue);" onclick="openLogDetail('${u.id}')">${al.length}건 보기</button></td><td><strong style="color:var(--rose);">${pts}pt</strong></td><td>${getLvl(pts)}</td><td>${pwStateBadge(u.pwChanged)}</td><td style="white-space:nowrap;"><button class="btn-sm btn-sm-del" onclick="deleteUser('${u.id}')">삭제</button> <button class="btn-sm" style="background:#e8f0fd;color:var(--adm-blue);" onclick="resetPw('${u.id}')">비번초기화</button></td></tr>`;
       }).join('');
 }
 function renderAdmTeachers() {
@@ -2038,7 +2039,7 @@ function renderAdmRanking() {
   const logs = getLogs();
   const rows = getUsers().filter(u=>u.role==='student').map(u=>{
     const al = logs.filter(l=>l.userId===u.id&&l.status==='approved');
-    return { name:u.name, cls:[u.grade,u.cls].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length };
+    return { name:u.name, cls:[u.grade,u.cls,u.num?u.num+'번':''].filter(Boolean).join(' '), pts:al.reduce((s,l)=>s+l.pts,0), cnt:al.length };
   }).sort((a,b)=>b.pts-a.pts);
   document.getElementById('a-rank-tbody').innerHTML = rows.length === 0
     ? `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px;">데이터가 없습니다.</td></tr>`
@@ -2053,7 +2054,7 @@ function openModal(role) {
   document.getElementById('modal-title').textContent    = role==='student' ? '학생 추가' : '교사 추가';
   document.getElementById('m-stu-fields').style.display = role==='student' ? 'block' : 'none';
   ['m-name','m-id','m-pw'].forEach(x => document.getElementById(x).value = '');
-  if (role==='student') { document.getElementById('m-grade').value=''; document.getElementById('m-cls').value=''; }
+  if (role==='student') { document.getElementById('m-grade').value=''; document.getElementById('m-cls').value=''; document.getElementById('m-num').value=''; }
   document.getElementById('m-err').style.display = 'none';
   document.getElementById('add-modal').classList.add('open');
 }
@@ -2064,6 +2065,7 @@ async function doAddUser() {
   const pw    = document.getElementById('m-pw').value;
   const grade = modalRole==='student' ? document.getElementById('m-grade').value : '';
   const cls   = modalRole==='student' ? document.getElementById('m-cls').value   : '';
+  const num   = modalRole==='student' ? (document.getElementById('m-num').value || '') : '';
   const errEl = document.getElementById('m-err');
   errEl.style.display = 'none';
   if (!name||!uid||!pw) { errEl.textContent='모든 필수 항목을 입력해 주세요.'; errEl.style.display='block'; return; }
@@ -2071,7 +2073,7 @@ async function doAddUser() {
   await fetchUsers();
   if (getUsers().find(u=>u.id===uid)) { errEl.textContent='이미 사용 중인 아이디입니다.'; errEl.style.display='block'; return; }
   showLoading(true);
-  const newU = { id:uid, pw, name, grade, cls, role:modalRole, pwChanged:false };
+  const newU = { id:uid, pw, name, grade, cls, num, role:modalRole, pwChanged:false };
   await saveUser(newU);
   showLoading(false);
   closeModal();
@@ -2201,7 +2203,7 @@ function parseExcel(file, prefix) {
 function showBulkPreview(prefix, rows, role) {
   const existingIds = getUsers().map(u => u.id);
   const isStu       = role === 'student';
-  const headers     = isStu ? ['아이디','비밀번호','이름','학년','반','상태'] : ['아이디','비밀번호','이름','상태'];
+  const headers     = isStu ? ['아이디','비밀번호','이름','학년','반','번호','상태'] : ['아이디','비밀번호','이름','상태'];
 
   let okCount = 0, dupCount = 0, errCount = 0;
   const tableRows = rows.map(r => {
@@ -2249,7 +2251,7 @@ async function doBulkImport(role) {
     if (!id||!pw||!name) return;
     if (existIds.includes(id)) return; // skip duplicates
     const newUser = { id, pw, name, role, pwChanged:false };
-    if (isStu) { newUser.grade = String(r[3]||'').trim(); newUser.cls = String(r[4]||'').trim(); }
+    if (isStu) { newUser.grade = String(r[3]||'').trim(); newUser.cls = String(r[4]||'').trim(); newUser.num = String(r[5]||'').trim(); }
     newUsers.push(newUser);
     existIds.push(id);
     added++;
@@ -2296,6 +2298,7 @@ function buildMileageData() {
       '아이디': u.id,
       '학년': u.grade || '',
       '반': u.cls || '',
+      '번호': u.num || '',
       '전체 로그 수': uLogs.length,
       '승인 건수': approved.length,
       '대기 건수': pending.length,
@@ -2336,7 +2339,7 @@ function buildStageData() {
   const users = getUsers().filter(u => u.role === 'student');
   const logs  = getLogs();
   return users.map(u => {
-    const row = { '이름': u.name, '학년': u.grade||'', '반': u.cls||'' };
+    const row = { '이름': u.name, '학년': u.grade||'', '반': u.cls||'', '번호': u.num||'' };
     [1,2,3,4].forEach(n => {
       const stageLogs = logs.filter(l => l.userId===u.id && l.stage===n);
       const approved  = stageLogs.some(l => l.status==='approved');
