@@ -207,6 +207,66 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
   .auth-bottom-left{padding:28px 20px;}
   .auth-bottom-right{width:100%;min-width:auto;padding:24px 20px 32px;}
 }
+/* ══ 탐구 유용 사이트 바 (로그인 화면) ══ */
+.research-links-bar{
+  background:#fff;
+  border-bottom:2px solid #f0daea;
+  padding:14px 28px;
+  display:flex;align-items:center;gap:20px;
+  position:relative;z-index:5;
+  overflow-x:auto;
+}
+.rlb-label{
+  font-family:'Noto Serif KR',serif;
+  font-size:.76rem;font-weight:900;color:#c8366a;
+  white-space:nowrap;flex-shrink:0;
+  padding-right:16px;border-right:1px solid #f0daea;
+}
+.rlb-items{display:flex;gap:8px;flex-shrink:0;}
+.rlb-item{
+  display:flex;align-items:center;gap:7px;
+  background:#fdf6fb;
+  border:1px solid #f0daea;
+  border-radius:8px;
+  padding:7px 13px;
+  text-decoration:none;
+  transition:all .15s;
+  white-space:nowrap;
+}
+.rlb-item:hover{background:#fce8f4;border-color:#e8a0c0;transform:translateY(-1px);}
+.rlb-icon{font-size:1rem;line-height:1;}
+.rlb-name{font-size:.78rem;font-weight:700;color:#3a1848;}
+.rlb-desc{font-size:.68rem;color:#9a7aaa;}
+
+/* ══ 탐구 바로가기 (학생 대시보드) ══ */
+.research-shortcuts{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-bottom:22px;
+}
+.rs-card{
+  display:flex;align-items:center;gap:10px;
+  background:var(--white);
+  border-radius:var(--radius);
+  padding:13px 14px;
+  box-shadow:var(--shadow);
+  text-decoration:none;
+  transition:all .18s;
+  border:1.5px solid transparent;
+}
+.rs-card:hover{
+  border-color:var(--rose-lt);
+  transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(200,90,122,.12);
+}
+.rs-icon{font-size:1.4rem;line-height:1;flex-shrink:0;}
+.rs-info{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.rs-name{font-size:.8rem;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rs-desc{font-size:.68rem;color:var(--muted);}
+@media(max-width:900px){.research-shortcuts{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:600px){.research-shortcuts{grid-template-columns:repeat(2,1fr);}}
+
 /* ══ CHANGE PW SCREEN ══ */
 #changepw-screen{display:none;min-height:100vh;background:linear-gradient(150deg,#fff0f5,#fce8f5,#ede0f8);align-items:center;justify-content:center;}
 .cpw-card{background:rgba(255,255,255,.95);border:1px solid rgba(200,90,122,.15);border-radius:24px;padding:2.4rem 2rem;width:400px;max-width:92vw;box-shadow:0 10px 48px rgba(200,90,122,.14);}
@@ -674,6 +734,38 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     </a>
   </div>
 
+  <!-- ── 탐구 유용 사이트 바로가기 ── -->
+  <div class="research-links-bar">
+    <div class="rlb-label">📖 탐구 유용 사이트</div>
+    <div class="rlb-items">
+      <a href="https://www.ndsl.kr" target="_blank" class="rlb-item">
+        <span class="rlb-icon">🔬</span>
+        <span class="rlb-name">NDSL</span>
+        <span class="rlb-desc">논문·학술자료</span>
+      </a>
+      <a href="https://www.scienceall.com" target="_blank" class="rlb-item">
+        <span class="rlb-icon">🧪</span>
+        <span class="rlb-name">사이언스올</span>
+        <span class="rlb-desc">과학 개념·실험</span>
+      </a>
+      <a href="https://www.riss.kr" target="_blank" class="rlb-item">
+        <span class="rlb-icon">📄</span>
+        <span class="rlb-name">RISS</span>
+        <span class="rlb-desc">학위논문 열람</span>
+      </a>
+      <a href="https://scholar.google.com" target="_blank" class="rlb-item">
+        <span class="rlb-icon">🌐</span>
+        <span class="rlb-name">Google Scholar</span>
+        <span class="rlb-desc">국제 학술 검색</span>
+      </a>
+      <a href="https://www.sciencetimes.co.kr" target="_blank" class="rlb-item">
+        <span class="rlb-icon">📰</span>
+        <span class="rlb-name">사이언스타임즈</span>
+        <span class="rlb-desc">과학 뉴스·주제</span>
+      </a>
+    </div>
+  </div>
+
   <!-- ── 하단 2단 본문 ── -->
   <div class="auth-bottom">
 
@@ -808,6 +900,31 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
         </div>
         <div class="chips" id="reward-chips" style="margin-top:11px;"></div>
       </div>
+      <!-- 탐구 유용 사이트 바로가기 -->
+      <div class="sec-hd" style="margin-top:8px;"><h2>🔗 탐구 유용 사이트</h2></div>
+      <div class="research-shortcuts">
+        <a href="https://www.ndsl.kr" target="_blank" class="rs-card">
+          <div class="rs-icon">🔬</div>
+          <div class="rs-info"><div class="rs-name">NDSL</div><div class="rs-desc">논문·학술자료</div></div>
+        </a>
+        <a href="https://www.scienceall.com" target="_blank" class="rs-card">
+          <div class="rs-icon">🧪</div>
+          <div class="rs-info"><div class="rs-name">사이언스올</div><div class="rs-desc">과학 개념·실험</div></div>
+        </a>
+        <a href="https://www.riss.kr" target="_blank" class="rs-card">
+          <div class="rs-icon">📄</div>
+          <div class="rs-info"><div class="rs-name">RISS</div><div class="rs-desc">학위논문 열람</div></div>
+        </a>
+        <a href="https://scholar.google.com" target="_blank" class="rs-card">
+          <div class="rs-icon">🌐</div>
+          <div class="rs-info"><div class="rs-name">Google Scholar</div><div class="rs-desc">국제 학술 검색</div></div>
+        </a>
+        <a href="https://www.sciencetimes.co.kr" target="_blank" class="rs-card">
+          <div class="rs-icon">📰</div>
+          <div class="rs-info"><div class="rs-name">사이언스타임즈</div><div class="rs-desc">과학 뉴스·주제</div></div>
+        </a>
+      </div>
+
       <div class="sec-hd"><h2>최근 탐구 로그</h2><a onclick="gotoPage('mylogs',document.querySelectorAll('#stabs .tab-btn')[2],'s')">전체 보기 →</a></div>
       <div class="log-list" id="recent-list"></div>
     </div>
