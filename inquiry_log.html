@@ -1309,7 +1309,7 @@ function gotoPage(pageId, btn, tabSet) {
   if (pageId === 'tranking') { renderTRanking(); }
 }
 
-function gotoAdm(pageId, btn) {
+async function gotoAdm(pageId, btn) {
   document.querySelectorAll('.adm-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.adm-menu-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
@@ -1323,7 +1323,14 @@ function gotoAdm(pageId, btn) {
     'a-teachers': renderAdmTeachers,
     'a-ranking':  renderAdmRanking,
   };
-  if (renders[pageId]) renders[pageId]();
+  if (renders[pageId]) {
+    // 페이지 이동 시 최신 데이터 동기화
+    showLoading(true);
+    await fetchUsers();
+    await fetchLogs();
+    showLoading(false);
+    renders[pageId]();
+  }
 }
 
 /* ══════════════════════════════
@@ -1465,6 +1472,7 @@ async function submitLog() {
   document.querySelectorAll('.stage-opt').forEach(o => o.classList.remove('selected'));
   pickedStage = 0;
 
+  await fetchLogs();
   renderDash(); renderRecent(); updateTBadge(); renderStageOpts();
   toast('📤 탐구 로그가 제출되었습니다! 선생님 승인 후 마일리지가 적립됩니다.', 't-rose');
   gotoPage('dash', document.querySelectorAll('#stabs .tab-btn')[0], 's');
@@ -1484,13 +1492,13 @@ async function approveLog(logId) {
   if (!log) return;
   log.status = 'approved';
   await saveLog(log);
-  afterChange();
+  await afterChange();
   toast(`✅ 승인 완료! ${log.student} 학생에게 +${log.pts}pt 적립되었습니다.`, 't-green');
 }
 async function deleteLog(logId) {
   if (!confirm('이 탐구 로그를 삭제하시겠습니까?')) return;
   await deleteLogById(logId);
-  afterChange();
+  await afterChange();
   toast('삭제되었습니다.', 't-red');
 }
 function deleteUser(userId) {
@@ -1507,12 +1515,15 @@ async function resetPw(userId) {
   if (!u) return;
   u.pwChanged = false;
   await saveUser(u);
-  afterChange();
+  await afterChange();
   toast(`${u.name}의 비밀번호가 초기화되었습니다. 다음 로그인 시 변경 요구됩니다.`, 't-blue');
 }
 
 async function afterChange() {
   if (!CU) return;
+  // 최신 데이터 동기화 후 렌더
+  await fetchUsers();
+  await fetchLogs();
   if (CU.role === 'admin') {
     renderAdmOverview(); renderAdmPending(); renderAdmLogs();
     renderAdmStudents(); renderAdmTeachers(); renderAdmRanking();
@@ -1933,12 +1944,16 @@ async function doAddUser() {
   const errEl = document.getElementById('m-err');
   errEl.style.display = 'none';
   if (!name||!uid||!pw) { errEl.textContent='모든 필수 항목을 입력해 주세요.'; errEl.style.display='block'; return; }
-  const users = getUsers();
-  if (users.find(u=>u.id===uid)) { errEl.textContent='이미 사용 중인 아이디입니다.'; errEl.style.display='block'; return; }
+  // 중복 체크 전에 최신 데이터 가져오기
+  await fetchUsers();
+  if (getUsers().find(u=>u.id===uid)) { errEl.textContent='이미 사용 중인 아이디입니다.'; errEl.style.display='block'; return; }
+  showLoading(true);
   const newU = { id:uid, pw, name, grade, cls, role:modalRole, pwChanged:false };
   await saveUser(newU);
+  showLoading(false);
   closeModal();
-  if (modalRole==='student') renderAdmStudents(); else renderAdmTeachers();
+  renderAdmStudents();
+  renderAdmTeachers();
   renderAdmOverview();
   toast(`✅ ${name} ${modalRole==='student'?'학생':'교사'}이 추가되었습니다.`, 't-blue');
 }
@@ -2121,6 +2136,7 @@ async function doBulkImport(role) {
     added++;
   });
   for (const nu of newUsers) await saveUser(nu);
+  await fetchUsers();
   clearBulk(prefix);
   renderAdmStudents(); renderAdmTeachers(); renderAdmOverview();
   toast(`✅ ${added}명이 등록되었습니다!`, 't-blue');
@@ -2448,7 +2464,7 @@ async function doRejectLog() {
   log.rejectRead   = false;
   await saveLog(log);
   closeRejectModal();
-  afterChange();
+  await afterChange();
   // 관리자 상세 모달 안에서 반려한 경우 갱신
   if (document.getElementById('log-detail-modal').classList.contains('open')) {
     renderLdmTabs(); renderLdmContent();
