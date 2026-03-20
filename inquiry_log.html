@@ -1916,8 +1916,7 @@ async function submitLog() {
   }
 
   const clsStr = [CU.grade, CU.cls, CU.num ? CU.num+'번' : ''].filter(Boolean).join(' ');
-  const logs   = getLogs();
-  logs.push({
+  const newLog = {
     id:      Date.now(),
     userId:  CU.id,
     student: CU.name,
@@ -1931,7 +1930,7 @@ async function submitLog() {
     date:    today(),
     pts:     PTS[pickedStage],
     status:  'pending'
-  });
+  };
   await saveLog(newLog);
 
   // 폼 초기화
@@ -1953,8 +1952,7 @@ async function submitLog() {
   document.querySelectorAll('.stage-opt').forEach(o => o.classList.remove('selected'));
   pickedStage = 0;
 
-  await fetchLogs();
-  renderDash(); renderRecent(); updateTBadge(); renderStageOpts();
+  await afterChange();
   toast('📤 탐구 로그가 제출되었습니다! 선생님 승인 후 마일리지가 적립됩니다.', 't-rose');
   gotoPage('dash', document.querySelectorAll('#stabs .tab-btn')[0], 's');
 }
