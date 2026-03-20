@@ -98,100 +98,149 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 }
 .login-banner-btn:hover .lbb-arrow{transform:translateX(3px);opacity:1;}
 
-/* 하단 2단 */
-.auth-bottom{display:flex;flex:1;min-height:0;}
+/* 하단 3단 */
+.auth-bottom{display:flex;flex:1;min-height:0;align-items:stretch;}
 
-/* 왼쪽 */
+/* 왼쪽: 탐구 유용 사이트 (세로 컬럼) */
+.auth-bottom-sites{
+  width:220px;min-width:190px;flex-shrink:0;
+  display:flex;flex-direction:column;
+  padding:30px 18px;
+  background:#fff;
+  border-right:1px solid #f0daea;
+}
+.abs-heading{
+  font-family:'Noto Serif KR',serif;
+  font-size:.8rem;font-weight:900;color:#c8366a;
+  margin-bottom:14px;padding-bottom:10px;
+  border-bottom:1.5px solid #f0daea;
+  letter-spacing:.02em;white-space:nowrap;
+}
+.abs-list{display:flex;flex-direction:column;gap:8px;}
+.abs-item{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 13px;border-radius:10px;
+  border:1px solid #f0e4f0;background:#fdf8fb;
+  text-decoration:none;transition:all .16s;
+}
+.abs-item:hover{background:#fce8f4;border-color:#e8a0c0;transform:translateX(3px);}
+.abs-icon{font-size:1.15rem;line-height:1;flex-shrink:0;}
+.abs-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.abs-name{font-size:.8rem;font-weight:700;color:#3a1848;}
+.abs-desc{font-size:.67rem;color:#9a7aaa;}
+.abs-arrow{font-size:.72rem;color:#c8366a;opacity:.5;flex-shrink:0;transition:all .16s;}
+.abs-item:hover .abs-arrow{opacity:1;transform:translateX(2px);}
+
+/* 가운데: 탐구의 4단계 — flex:1 로 넓게 */
 .auth-bottom-left{
   flex:1;
   display:flex;align-items:center;justify-content:center;
-  padding:40px 52px;
+  padding:36px 52px;
   background:linear-gradient(150deg,#fce8f4 0%,#ece0f7 50%,#dceef8 100%);
   border-right:1px solid #f0daea;
 }
-.auth-left-content{width:100%;max-width:360px;}
+.auth-left-content{width:100%;max-width:520px;}
 .auth-left-heading{
   font-family:'Noto Serif KR',serif;
-  font-size:1rem;font-weight:900;color:#3a1848;
-  margin-bottom:18px;padding-bottom:11px;
+  font-size:1.1rem;font-weight:900;color:#3a1848;
+  margin-bottom:20px;padding-bottom:13px;
   border-bottom:1.5px solid rgba(200,100,160,.2);
   letter-spacing:.02em;
 }
-.auth-stage-list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px;}
+.auth-stage-list{display:flex;flex-direction:column;gap:13px;margin-bottom:24px;}
 .auth-stage-item{
-  display:flex;align-items:center;gap:12px;
-  background:rgba(255,255,255,.58);
+  display:flex;align-items:center;gap:16px;
+  background:rgba(255,255,255,.65);
   backdrop-filter:blur(8px);
-  border:1px solid rgba(200,100,160,.12);
-  border-radius:11px;padding:11px 15px;
+  border:1px solid rgba(200,100,160,.13);
+  border-radius:14px;padding:16px 22px;
   transition:all .18s;
 }
-.auth-stage-item:hover{background:rgba(255,255,255,.82);transform:translateX(3px);}
-.auth-stage-icon{font-size:1.25rem;line-height:1;flex-shrink:0;}
-.auth-stage-text{display:flex;flex-direction:column;gap:1px;}
+.auth-stage-item:hover{background:rgba(255,255,255,.88);transform:translateX(5px);}
+.auth-stage-icon{font-size:1.6rem;line-height:1;flex-shrink:0;}
+.auth-stage-text{display:flex;flex-direction:column;gap:4px;}
 .auth-stage-text strong{
-  font-size:.81rem;font-weight:700;color:#3a1848;
+  font-size:.95rem;font-weight:700;color:#3a1848;
   font-family:'Noto Serif KR',serif;letter-spacing:.01em;
 }
-.auth-stage-text span{font-size:.72rem;color:#7a5090;}
-.auth-left-footer{display:flex;gap:7px;flex-wrap:wrap;}
+.auth-stage-text span{font-size:.81rem;color:#7a5090;}
+.auth-left-footer{display:flex;gap:9px;flex-wrap:wrap;}
 .auth-footer-badge{
-  background:rgba(255,255,255,.65);
-  border:1px solid rgba(200,100,150,.18);
-  border-radius:50px;padding:5px 12px;
-  font-size:.71rem;font-weight:600;color:#5a2070;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(200,100,150,.2);
+  border-radius:50px;padding:7px 15px;
+  font-size:.76rem;font-weight:600;color:#5a2070;
 }
 
-/* 오른쪽 */
-.auth-bottom-right{
-  width:340px;min-width:300px;
-  display:flex;align-items:center;justify-content:center;
-  padding:36px 28px;
-  background:#fff;
+/* 배너+로그인 래퍼 */
+.login-hero-wrap{
+  position:relative;
+  z-index:2;
 }
-.auth-card{
-  background:#fff;
-  border:1px solid #f0daea;
+
+/* 로그인 카드: 우상단 절대 배치 */
+.login-card-float{
+  position:absolute;
+  top:14px;right:24px;
+  z-index:20;
+  width:280px;
+}
+.login-card-float .auth-card{
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(200,90,122,.18);
   border-radius:16px;
-  padding:1.8rem 1.6rem;
-  width:100%;
-  box-shadow:0 4px 24px rgba(200,90,122,.09);
+  padding:1.5rem 1.4rem;
+  box-shadow:0 8px 32px rgba(80,20,60,.18);
+  backdrop-filter:blur(10px);
 }
-.auth-card h2{
+.login-card-float .auth-card h2{
   font-family:'Noto Serif KR',serif;
-  font-size:1.05rem;font-weight:900;color:#3a1848;
-  margin-bottom:.25rem;letter-spacing:.03em;
+  font-size:.98rem;font-weight:900;
+  color:#3a1848;margin-bottom:.2rem;
+  letter-spacing:.03em;
 }
-.auth-sub{
-  font-size:.73rem;color:#9a7aa0;
-  margin-bottom:1.25rem;line-height:1.6;
+.login-card-float .auth-sub{
+  font-size:.7rem;color:#9a7aa0;
+  margin-bottom:1rem;line-height:1.55;
 }
-#auth-screen .fg{margin-bottom:.7rem;}
-#auth-screen .fg label{
-  font-size:.71rem;font-weight:700;
-  color:#5a3070;margin-bottom:3px;
+.login-card-float .fg{margin-bottom:.6rem;}
+.login-card-float .fg label{
+  font-size:.68rem;font-weight:700;
+  color:#5a3070;margin-bottom:2px;
   letter-spacing:.03em;display:block;
 }
-#auth-screen .fg input{
-  width:100%;padding:8px 11px;font-size:.83rem;
+.login-card-float .fg input{
+  width:100%;padding:7px 10px;font-size:.8rem;
   border-radius:8px;border:1.5px solid #edd8ea;
   background:#fdf8fb;font-family:'Noto Sans KR',sans-serif;
-  outline:none;transition:border .15s;
+  outline:none;transition:border .15s;box-sizing:border-box;
 }
-#auth-screen .fg input:focus{border-color:#c8366a;}
-#auth-screen .btn-rose{
-  width:100%;padding:10px;font-size:.84rem;font-weight:700;
-  border-radius:8px;border:none;margin-top:.1rem;
+.login-card-float .fg input:focus{border-color:#c8366a;}
+.login-card-float .btn-rose{
+  width:100%;padding:9px;font-size:.8rem;font-weight:700;
+  border-radius:8px;border:none;margin-top:.05rem;
   background:linear-gradient(135deg,#e03870,#c8366a);
   color:#fff;cursor:pointer;font-family:'Noto Sans KR',sans-serif;
   letter-spacing:.04em;transition:opacity .18s;
 }
-#auth-screen .btn-rose:hover{opacity:.88;}
+.login-card-float .btn-rose:hover{opacity:.88;}
+.login-card-float .err-msg{
+  background:rgba(255,220,225,.8);border:1px solid rgba(220,60,90,.2);
+  color:#c0304a;font-size:.72rem;font-weight:600;
+  padding:6px 10px;border-radius:7px;margin-bottom:.8rem;
+}
+
+/* auth-bottom-right 숨김 (이제 사용 안 함) */
+.auth-bottom-right{display:none;}
+
+@media(max-width:860px){
+  .login-card-float{position:static;width:100%;padding:0 16px 16px;}
+  .auth-bottom-right{display:none;}
+}
 
 /* 푸터 */
 .login-footer{
-  background:#3a1848;
-  padding:14px 28px;
+  background:#3a1848;padding:14px 28px;
   display:flex;align-items:center;justify-content:center;
   gap:10px;font-size:.72rem;color:rgba(255,255,255,.6);
 }
@@ -199,13 +248,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .login-footer a:hover{color:#ffb8d0;}
 .lf-sep{opacity:.4;}
 
-@media(max-width:720px){
+@media(max-width:860px){
   .auth-bottom{flex-direction:column;}
   .school-banner{height:200px !important;}
   .login-banner-links{flex-direction:column;}
   .login-banner-btn{border-right:none;border-bottom:1px solid #f0e0ea;}
-  .auth-bottom-left{padding:28px 20px;}
-  .auth-bottom-right{width:100%;min-width:auto;padding:24px 20px 32px;}
+  .auth-bottom-sites{width:100%;min-width:auto;border-right:none;border-bottom:1px solid #f0daea;}
+  .abs-list{flex-direction:row;flex-wrap:wrap;}
+  .auth-bottom-left{padding:28px 20px;border-right:none;}
+  .auth-bottom-right{width:100%;min-width:auto;padding:20px 20px 32px;}
 }
 /* ══ 탐구 유용 사이트 바 (로그인 화면) ══ */
 .research-links-bar{
@@ -691,6 +742,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 <div id="auth-screen">
 
   <!-- ── 상단 헤더 바 ── -->
+  <!-- 배너+로그인 래퍼 -->
+  <div class="login-hero-wrap">
+
+  <!-- 로그인 카드: 우상단 절대 배치 -->
+  <div class="login-card-float">
+    <div class="auth-card">
+      <h2>로그인</h2>
+      <p class="auth-sub">배부받은 아이디와 비밀번호로 로그인하세요.</p>
+      <div id="login-err" class="err-msg" style="display:none;">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+      <div class="fg"><label>아이디</label><input type="text" id="li-id" placeholder="아이디 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div class="fg"><label>비밀번호</label><input type="password" id="li-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <button class="btn-rose" onclick="doLogin()">로그인</button>
+    </div>
+  </div>
+
   <div class="login-topbar">
     <div class="login-topbar-inner">
       <div class="login-topbar-left">
@@ -714,6 +780,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     </div>
   </div>
 
+  </div><!-- /login-hero-wrap -->
+
   <!-- ── 배너 링크 버튼 ── -->
   <div class="login-banner-links">
     <a href="http://gshin.gen.hs.kr/main/main.php" target="_blank" class="login-banner-btn">
@@ -735,41 +803,57 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
   </div>
 
   <!-- ── 탐구 유용 사이트 바로가기 ── -->
-  <div class="research-links-bar">
-    <div class="rlb-label">📖 탐구 유용 사이트</div>
-    <div class="rlb-items">
-      <a href="https://www.ndsl.kr" target="_blank" class="rlb-item">
-        <span class="rlb-icon">🔬</span>
-        <span class="rlb-name">NDSL</span>
-        <span class="rlb-desc">논문·학술자료</span>
-      </a>
-      <a href="https://www.scienceall.com" target="_blank" class="rlb-item">
-        <span class="rlb-icon">🧪</span>
-        <span class="rlb-name">사이언스올</span>
-        <span class="rlb-desc">과학 개념·실험</span>
-      </a>
-      <a href="https://www.riss.kr" target="_blank" class="rlb-item">
-        <span class="rlb-icon">📄</span>
-        <span class="rlb-name">RISS</span>
-        <span class="rlb-desc">학위논문 열람</span>
-      </a>
-      <a href="https://scholar.google.com" target="_blank" class="rlb-item">
-        <span class="rlb-icon">🌐</span>
-        <span class="rlb-name">Google Scholar</span>
-        <span class="rlb-desc">국제 학술 검색</span>
-      </a>
-      <a href="https://www.sciencetimes.co.kr" target="_blank" class="rlb-item">
-        <span class="rlb-icon">📰</span>
-        <span class="rlb-name">사이언스타임즈</span>
-        <span class="rlb-desc">과학 뉴스·주제</span>
-      </a>
-    </div>
-  </div>
-
-  <!-- ── 하단 2단 본문 ── -->
+  <!-- ── 하단 3단 본문 ── -->
   <div class="auth-bottom">
 
-    <!-- 왼쪽: 탐구 단계 안내 -->
+    <!-- 왼쪽: 탐구 유용 사이트 -->
+    <div class="auth-bottom-sites">
+      <div class="abs-heading">📖 탐구 유용 사이트</div>
+      <div class="abs-list">
+        <a href="https://www.ndsl.kr" target="_blank" class="abs-item">
+          <span class="abs-icon">🔬</span>
+          <div class="abs-text">
+            <span class="abs-name">NDSL</span>
+            <span class="abs-desc">논문·학술자료 검색</span>
+          </div>
+          <span class="abs-arrow">→</span>
+        </a>
+        <a href="https://www.scienceall.com" target="_blank" class="abs-item">
+          <span class="abs-icon">🧪</span>
+          <div class="abs-text">
+            <span class="abs-name">사이언스올</span>
+            <span class="abs-desc">과학 개념·실험 자료</span>
+          </div>
+          <span class="abs-arrow">→</span>
+        </a>
+        <a href="https://www.riss.kr" target="_blank" class="abs-item">
+          <span class="abs-icon">📄</span>
+          <div class="abs-text">
+            <span class="abs-name">RISS</span>
+            <span class="abs-desc">학위논문 무료 열람</span>
+          </div>
+          <span class="abs-arrow">→</span>
+        </a>
+        <a href="https://scholar.google.com" target="_blank" class="abs-item">
+          <span class="abs-icon">🌐</span>
+          <div class="abs-text">
+            <span class="abs-name">Google Scholar</span>
+            <span class="abs-desc">국제 학술논문 검색</span>
+          </div>
+          <span class="abs-arrow">→</span>
+        </a>
+        <a href="https://www.sciencetimes.co.kr" target="_blank" class="abs-item">
+          <span class="abs-icon">📰</span>
+          <div class="abs-text">
+            <span class="abs-name">사이언스타임즈</span>
+            <span class="abs-desc">과학 뉴스·탐구 주제</span>
+          </div>
+          <span class="abs-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 가운데: 탐구의 4단계 -->
     <div class="auth-bottom-left">
       <div class="auth-left-content">
         <div class="auth-left-heading">탐구의 4단계</div>
@@ -811,18 +895,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     </div>
 
     <!-- 오른쪽: 로그인 -->
-    <div class="auth-bottom-right">
-      <div class="auth-card">
-        <h2>로그인</h2>
-        <p class="auth-sub">배부받은 아이디와 비밀번호로 로그인하세요.</p>
-        <div id="login-err" class="err-msg" style="display:none;">아이디 또는 비밀번호가 올바르지 않습니다.</div>
-        <div class="fg"><label>아이디</label><input type="text" id="li-id" placeholder="아이디 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-        <div class="fg"><label>비밀번호</label><input type="password" id="li-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-        <button class="btn-rose" onclick="doLogin()">로그인</button>
-      </div>
-    </div>
-
   </div>
+
 
   <!-- ── 하단 푸터 ── -->
   <div class="login-footer">
