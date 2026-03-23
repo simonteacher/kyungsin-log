@@ -1010,9 +1010,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     <!-- 탐구 로그 등록 -->
     <div id="page-upload" class="page">
       <div class="upload-wrap">
-        <h1 class="page-title">1단계 탐구로그 등록 🌿</h1>
-        <p class="page-sub">나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.</p>
-        <div class="ibox ibox-lav"><div class="ibox-icon">📌</div><div class="ibox-text">등록한 탐구 로그는 <strong>담당 선생님의 검토·승인 후</strong> 마일리지가 적립됩니다.</div></div>
+        <h1 class="page-title" id="upload-page-title">1단계 탐구로그 등록 🌿</h1>
+        <p class="page-sub" id="upload-page-sub">나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.</p>
+        <div class="ibox ibox-lav" id="upload-page-hint"><div class="ibox-icon">📌</div><div class="ibox-text">등록한 탐구 로그는 <strong>담당 선생님의 검토·승인 후</strong> 마일리지가 적립됩니다.</div></div>
 
         <!-- 기본 정보 -->
         <div class="form-card"><h3>① 기본 정보</h3>
@@ -1834,6 +1834,11 @@ function gotoPage(pageId, btn, tabSet) {
     document.getElementById('btn-submit-log').style.display = 'block';
     document.getElementById('f-title').value   = '';
     document.getElementById('f-subject').value = '';
+    // 타이틀 1단계로 복원
+    const titleEl2 = document.getElementById('upload-page-title');
+    const subEl2   = document.getElementById('upload-page-sub');
+    if (titleEl2) titleEl2.textContent = '1단계 탐구로그 등록 🌿';
+    if (subEl2)   subEl2.textContent   = '나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.';
   }
   _skipUploadReset = false;  // 플래그 초기화
   if (pageId === 'dash')     { renderDash(); renderRecent(); checkRejectNotify(); }
@@ -2053,6 +2058,16 @@ function goNextStage(n) {
    'f4-process','f4-result','f4-conclusion','f4-tail'
   ].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
 
+  // 페이지 타이틀/부제 변경
+  const titles = {1:'1단계 탐구로그 등록 🌿', 2:'2단계 탐구로그 작성 🔍', 3:'3단계 탐구로그 작성 🧠', 4:'4단계 탐구로그 작성 🚀'};
+  const subs   = {1:'나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.', 2:'1단계 탐구 기초 내용을 바탕으로 심화 탐구를 진행하세요.', 3:'2단계 탐구 결과를 바탕으로 심화 질문을 도출하세요.', 4:'3단계에서 설계한 심화 탐구를 수행하고 결론을 도출하세요.'};
+  const titleEl = document.getElementById('upload-page-title');
+  const subEl   = document.getElementById('upload-page-sub');
+  const hintEl  = document.getElementById('upload-page-hint');
+  if (titleEl) titleEl.textContent = titles[n] || `${n}단계 탐구로그 작성`;
+  if (subEl)   subEl.textContent   = subs[n]   || '';
+  if (hintEl)  hintEl.style.display = 'flex';  // 안내 배너 유지
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
   toast(`${n}단계 작성 폼으로 이동했습니다 🌸`, 't-green');
 }
@@ -2074,24 +2089,31 @@ function editLog(logId) {
 
 // 내 탐구 로그 삭제
 async function deleteMyLog(logId) {
-  const numId = Number(logId);  // bigint id → 숫자 변환
-  const log = getLogs().find(l => Number(l.id) === numId && String(l.userId) === String(CU.id));
-  const logTitle = log ? log.title : '이 탐구 로그';
+  // id를 문자열/숫자 모두 대응
+  const sid = String(logId);
+  const allLogs = getLogs();
+  const log = allLogs.find(l => String(l.id) === sid);
+  const logTitle = log ? log.title : sid + '번 탐구 로그';
   const logStatus = log ? log.status : '';
   const extraMsg = logStatus === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
-  // Supabase 직접 삭제
-  const { error } = await supa.from('logs').delete().eq('id', numId);
-  if (error) {
-    console.error('삭제 오류:', error);
-    toast('삭제 실패: ' + (error.message || error.details || '권한을 확인해주세요'), 't-red');
-    return;
+  showLoading(true);
+  try {
+    // Supabase delete - id를 그대로 전달 (bigint 처리는 SDK가 함)
+    const res = await supa.from('logs').delete().eq('id', logId);
+    if (res.error) throw res.error;
+    // 성공: 캐시 재조회
+    await fetchLogs();
+    await fetchUsers();
+    toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+    renderMyLogs('all');
+    renderDash();
+  } catch(e) {
+    console.error('[deleteMyLog] 오류:', e);
+    toast('삭제 실패: ' + (e.message || e.details || JSON.stringify(e)), 't-red');
+  } finally {
+    showLoading(false);
   }
-  // 로컬 캐시 재조회 + 화면 갱신
-  await fetchLogs();
-  await afterChange();
-  toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
-  renderMyLogs('all');
 }
 
 /* ══════════════════════════════
