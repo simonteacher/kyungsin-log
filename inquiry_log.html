@@ -29,7 +29,7 @@ html{scroll-behavior:smooth;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
 
 /* ══ AUTH ══ */
-#auth-screen{display:none;flex-direction:column;min-height:100vh;background:#f8f4f8;position:relative;}
+#auth-screen{display:flex;flex-direction:column;min-height:100vh;background:#f8f4f8;position:relative;}
 .auth-deco,.ad1,.ad2,.ad3{display:none;}
 
 /* 상단 헤더 바 */
@@ -1560,11 +1560,10 @@ async function saveLog(l) {
 }
 
 async function deleteLogById(lid) {
-  const r = await supa.from('logs').delete().eq('id', lid);
-  if (r.error) {
-    console.error('log delete error:', r.error);
-    toast('삭제 실패: ' + (r.error.message || r.error.details || '알 수 없는 오류'), 't-red');
-    return;
+  const { error } = await supa.from('logs').delete().eq('id', lid);
+  if (error) {
+    console.error('deleteLogById error:', error);
+    throw error;  // 호출자에서 처리
   }
   await fetchLogs();
 }
@@ -2113,12 +2112,20 @@ async function deleteMyLog(logId) {
   const logStatus = log ? log.status : '';
   const extraMsg  = logStatus === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
-  // 교사/관리자와 동일하게 deleteLogById 재사용
-  await deleteLogById(logId);
-  await afterChange();
-  toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
-  renderMyLogs('all');
-  renderDash();
+  showLoading(true);
+  try {
+    await deleteLogById(logId);
+    await afterChange();
+    toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+    renderMyLogs('all');
+    renderDash();
+  } catch(e) {
+    const msg = e?.message || e?.details || JSON.stringify(e);
+    console.error('[deleteMyLog]', e);
+    alert('삭제에 실패했습니다.\n\n원인: ' + msg + '\n\nSupabase → SQL Editor에서\nGRANT ALL ON TABLE logs TO anon;\n을 실행해주세요.');
+  } finally {
+    showLoading(false);
+  }
 }
 
 /* ══════════════════════════════
@@ -2653,10 +2660,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     localStorage.removeItem('sq_session_token');
     localStorage.removeItem('sq_session_uid');
     showLoading(false);
-  } else {
-    // 저장된 세션 없으면 로그인 화면 표시
-    document.getElementById('auth-screen').style.display = 'flex';
   }
+  // 세션 없음 or 복원 실패 → auth-screen은 CSS 기본값(flex)으로 이미 보임
   const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
   safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
   safeOn('single-log-modal',    function(e){ if(e.target===this) closeSingleLogModal(); });
