@@ -2245,33 +2245,15 @@ async function deleteMyLog(logId) {
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
   showLoading(true);
   try {
-    // Supabase REST API 직접 호출
-    const res = await fetch(
-      SUPA_URL + '/rest/v1/logs?id=eq.' + encodeURIComponent(logId),
-      {
-        method: 'DELETE',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + SUPA_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }
-      }
-    );
-    const resText = await res.text();
-    console.log('[deleteMyLog] HTTP', res.status, resText);
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status + ': ' + resText);
-    }
-    // 성공
-    await fetchLogs();
+    // 교사/관리자 삭제와 동일한 SDK 방식
+    await deleteLogById(logId);
     await afterChange();
     toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
     renderMyLogs('all');
     renderDash();
   } catch(e) {
-    console.error('[deleteMyLog] 오류:', e);
-    alert('[삭제 오류]\n' + (e.message || String(e)) + '\n\nSupabase SQL Editor에서 아래 실행:\nGRANT ALL ON TABLE logs TO anon;\nALTER TABLE logs DISABLE ROW LEVEL SECURITY;');
+    console.error('[deleteMyLog]', e);
+    toast('삭제 실패: ' + (e.message || JSON.stringify(e)), 't-red');
   } finally {
     showLoading(false);
   }
