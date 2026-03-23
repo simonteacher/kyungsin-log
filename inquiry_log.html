@@ -1864,11 +1864,16 @@ async function gotoAdm(pageId, btn) {
    STUDENT ACTIONS
 ══════════════════════════════ */
 function getUnlockedStage() {
-  // 현재 로그인 학생이 승인받은 최고 단계 확인
-  const logs  = getLogs().filter(l => l.userId === CU.id && l.status === 'approved');
-  const maxApproved = logs.length ? Math.max(...logs.map(l => l.stage)) : 0;
-  // 승인된 단계 + 1 까지 선택 가능 (아무것도 없으면 1단계만 가능)
-  return maxApproved + 1;
+  // 승인된 가장 높은 단계 + 1 까지 선택 가능
+  // 단, 해당 다음 단계에 이미 제출(pending/approved)이 있으면 잠금
+  const myLogs     = getLogs().filter(l => l.userId === CU.id);
+  const approved   = myLogs.filter(l => l.status === 'approved');
+  const maxApproved = approved.length ? Math.max(...approved.map(l => l.stage)) : 0;
+  const nextStage  = maxApproved + 1;
+  // 이미 nextStage 로그가 있으면 그 단계는 잠금 (중복 제출 방지)
+  const alreadyHasNext = myLogs.some(l => l.stage === nextStage);
+  if (alreadyHasNext) return maxApproved; // 이미 있으면 현재 maxApproved까지만
+  return nextStage;
 }
 
 function renderStageOpts() {
@@ -2045,8 +2050,8 @@ async function deleteMyLog(logId) {
   if (!confirm(`"${log.title}" 탐구 로그를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`)) return;
   await deleteLogById(logId);
   await afterChange();
-  renderMyLogs('all');
   toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+  renderMyLogs('all');
 }
 
 /* ══════════════════════════════
@@ -2060,8 +2065,30 @@ async function approveLog(logId) {
   await afterChange();
   toast(`✅ 승인 완료! ${log.student} 학생에게 +${log.pts}pt 적립되었습니다.`, 't-green');
 }
+function confirmDeleteLog(logId, from) {
+  const log = getLogs().find(l => l.id === logId);
+  const title = log ? '"'+log.title+'"' : '이 탐구 로그';
+  if (!confirm(title + '를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+  deleteLog(logId).then(() => {
+    if (from === 'modal') {
+      closeSingleLogModal();
+      // 해당 학생 로그가 남아있으면 팝업 유지, 없으면 닫기
+      if (ldmUserId) {
+        const remain = getLogs().filter(l => l.userId === ldmUserId);
+        if (remain.length === 0) { closeStuLogsModal(); closeLogDetail(); }
+        else { renderLdmTabs(); renderLdmContent(); }
+      } else {
+        closeStuLogsModal();
+      }
+    }
+    if (from === 'ldm') {
+      const remain = getLogs().filter(l => l.userId === ldmUserId);
+      if (remain.length === 0) { closeLogDetail(); }
+      else { renderLdmTabs(); renderLdmContent(); }
+    }
+  });
+}
 async function deleteLog(logId) {
-  if (!confirm('이 탐구 로그를 삭제하시겠습니까?')) return;
   await deleteLogById(logId);
   await afterChange();
   toast('삭제되었습니다.', 't-red');
@@ -2508,9 +2535,9 @@ function openSingleLogModal(logId) {
     actEl.innerHTML = `
       <button class="btn-sm btn-sm-ok" onclick="approveLog(${log.id});updateSingleLogModal(${log.id});">✅ 승인</button>
       <button class="btn-sm btn-sm-no" onclick="openRejectModal(${log.id});closeSingleLogModal();">❌ 반려</button>
-      <button class="btn-sm btn-sm-del" onclick="if(confirm('삭제하시겠습니까?')){deleteLog(${log.id});closeSingleLogModal();closeStuLogsModal();}">🗑 삭제</button>`;
+      <button class="btn-sm btn-sm-del" onclick="confirmDeleteLog(${log.id},'modal')">🗑 삭제</button>`;
   } else {
-    actEl.innerHTML = `<button class="btn-sm btn-sm-del" onclick="if(confirm('삭제하시겠습니까?')){deleteLog(${log.id});closeSingleLogModal();}">🗑 삭제</button>`;
+    actEl.innerHTML = `<button class="btn-sm btn-sm-del" onclick="confirmDeleteLog(${log.id},'modal')">🗑 삭제</button>`;
   }
 
   document.getElementById('single-log-modal').classList.add('open');
@@ -2708,6 +2735,7 @@ function renderLdmContent() {
     const actionBtns = l.status === 'pending' ? `
       <button class="btn-sm btn-sm-ok" onclick="approveLog(${l.id});renderAdmOverview();renderLdmTabs();renderLdmContent();">✅ 승인</button>
       <button class="btn-sm btn-sm-no" onclick="rejectLog(${l.id});renderAdmOverview();renderLdmTabs();renderLdmContent();">❌ 반려</button>` : '';
+    const delBtn = `<button class="btn-sm btn-sm-del" onclick="confirmDeleteLog(${l.id},'ldm')" style="margin-left:4px;">🗑 삭제</button>`;
     return `
     <div class="ldm-log-card ${stCls}">
       <div class="ldm-log-hd">
@@ -2721,9 +2749,9 @@ function renderLdmContent() {
       ${l.question ? `<div class="ldm-field"><div class="ldm-field-label">💬 탐구 질문</div><div class="ldm-field-value">${l.question}</div></div>` : ''}
       <div class="ldm-field"><div class="ldm-field-label">📝 탐구 내용</div><div class="ldm-field-value">${l.content.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,'<strong style="color:var(--adm-navy);">[$1]</strong>')}</div></div>
       ${l.next ? `<div class="ldm-field"><div class="ldm-field-label">🔗 꼬리 질문</div><div class="ldm-field-value" style="color:var(--adm-blue);">${l.next}</div></div>` : ''}
-      ${actionBtns ? `<div class="ldm-actions">${actionBtns}</div>` : ''}
-      <div class="ldm-actions" style="margin-top:6px;border-top:1px dashed rgba(100,100,150,.15);padding-top:8px;">
-        <button class="btn-sm" style="background:#f0f4ff;color:#4a6fa5;border:1px solid #c8d8f0;" onclick="downloadLogTxt(${l.id})">⬇️ 다운로드</button>
+      <div class="ldm-actions">
+        ${actionBtns || ''}${delBtn}
+        <button class="btn-sm" style="background:#f0f4ff;color:#4a6fa5;border:1px solid #c8d8f0;margin-left:4px;" onclick="downloadLogTxt(${l.id})">⬇️ 다운로드</button>
       </div>
     </div>`;
   }).join('');
