@@ -1020,31 +1020,20 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
           <div class="fg2"><label>관련 교과 / 진로 연계 분야</label><input type="text" id="f-subject" placeholder="예) 물리학, 광학 엔지니어 진로"/></div>
         </div>
 
-        <!-- 단계 선택 -->
-        <div class="form-card"><h3>② 탐구 단계 선택 *</h3>
-          <div class="stage-grid">
-            <div class="stage-opt" data-stage="1" onclick="pickStage(1,this)"><div class="so-icon">💡</div><div class="so-name">1단계</div><div class="so-desc">호기심 발견</div><div class="so-pts">+100pt</div></div>
-            <div class="stage-opt" data-stage="2" onclick="pickStage(2,this)"><div class="so-icon">🔍</div><div class="so-name">2단계</div><div class="so-desc">기초 탐구</div><div class="so-pts">+100pt</div></div>
-            <div class="stage-opt" data-stage="3" onclick="pickStage(3,this)"><div class="so-icon">🧠</div><div class="so-name">3단계</div><div class="so-desc">심화 질문 도출</div><div class="so-pts">+100pt</div></div>
-            <div class="stage-opt" data-stage="4" onclick="pickStage(4,this)"><div class="so-icon">🚀</div><div class="so-name">4단계</div><div class="so-desc">후속 탐구</div><div class="so-pts">+100pt</div></div>
-          </div>
-        </div>
+        <!-- 단계 선택 제거: 1단계 등록 전용 페이지이므로 자동 선택 -->
 
-        <!-- 단계별 작성 폼 (단계 선택 전) -->
-        <div id="stage-form-placeholder" class="form-card" style="text-align:center;padding:36px;color:var(--muted);">
-          <div style="background:linear-gradient(135deg,#fff0f5,#fce8f0);border:1.5px solid #f5c0d0;border-radius:14px;padding:18px 22px;margin-bottom:18px;text-align:left;">
-            <p style="margin:0 0 6px 0;font-size:.92rem;font-weight:700;color:#c0395a;">📌 탐구로그 등록 안내</p>
-            <p style="margin:0;font-size:.85rem;color:#7a4a5a;line-height:1.7;">
-              ✅ 여기는 <strong>1단계 등록만</strong> 가능합니다.<br/>
-              👩‍🏫 교사 승인 후 <strong>탐구목록</strong>을 클릭하여 2단계로 이어서 작성하세요.
-            </p>
-          </div>
-          <div style="font-size:2rem;margin-bottom:10px;">☝️</div>
-          <p style="font-size:.9rem;">위에서 탐구 단계를 먼저 선택하면<br/>단계에 맞는 작성 양식이 나타납니다.</p>
+        <!-- 1단계 전용: placeholder 대신 안내 배너 -->
+        <div id="stage-form-placeholder" style="display:none;"></div>
+        <div class="form-card" style="background:linear-gradient(135deg,#fff0f5,#fce8f0);border:1.5px solid #f5c0d0;">
+          <p style="margin:0 0 4px 0;font-size:.92rem;font-weight:700;color:#c0395a;">📌 탐구로그 등록 안내</p>
+          <p style="margin:0;font-size:.85rem;color:#7a4a5a;line-height:1.7;">
+            ✅ 여기는 <strong>1단계 등록만</strong> 가능합니다.&nbsp;&nbsp;
+            👩‍🏫 교사 승인 후 <strong>탐구목록</strong>을 클릭하여 2단계로 이어서 작성하세요.
+          </p>
         </div>
 
         <!-- 1단계: 호기심 발견 -->
-        <div id="stage-form-1" style="display:none;">
+        <div id="stage-form-1" style="display:block;">
           <div class="stage-form-header stage-header-1">
             <span class="sf-icon">💡</span>
             <div><div class="sf-title">1단계 · 호기심 발견</div><div class="sf-desc">일상에서 발견한 궁금증을 자유롭게 기록해 보세요.</div></div>
@@ -1163,8 +1152,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
           </div>
         </div>
 
-        <div class="ibox ibox-rose" id="submit-hint" style="display:none;margin-bottom:14px;"><div class="ibox-icon">⏳</div><div class="ibox-text"><strong>마일리지는 선생님 승인 후 자동 적립됩니다.</strong></div></div>
-        <button class="btn-submit" id="btn-submit-log" style="display:none;" onclick="submitLog()">탐구 로그 제출하기 🌸</button>
+        <div class="ibox ibox-rose" id="submit-hint" style="display:flex;margin-bottom:14px;"><div class="ibox-icon">⏳</div><div class="ibox-text"><strong>마일리지는 선생님 승인 후 자동 적립됩니다.</strong></div></div>
+        <button class="btn-submit" id="btn-submit-log" style="display:block;" onclick="submitLog()">탐구 로그 제출하기 🌸</button>
       </div>
     </div>
     <!-- 내 탐구 로그 -->
@@ -1572,7 +1561,11 @@ async function saveLog(l) {
 
 async function deleteLogById(lid) {
   const r = await supa.from('logs').delete().eq('id', lid);
-  if (r.error) { console.error('log delete error:', r.error); toast('삭제 실패: ' + r.error.message, 't-red'); return; }
+  if (r.error) {
+    console.error('log delete error:', r.error);
+    toast('삭제 실패: ' + (r.error.message || r.error.details || '알 수 없는 오류'), 't-red');
+    return;
+  }
   await fetchLogs();
 }
 
@@ -1614,7 +1607,7 @@ const ADM_TITLES = {
 };
 
 let CU          = null;
-let pickedStage = 0;
+let pickedStage = 1;  // 1단계 전용 페이지: 기본 1단계
 let modalRole   = '';
 let bulkDataStu = [];
 let bulkDataTch = [];
@@ -1830,13 +1823,14 @@ function gotoPage(pageId, btn, tabSet) {
   document.getElementById('page-' + pageId).classList.add('active');
   if (btn) btn.classList.add('active');
   if (pageId === 'upload')   {
-    pickedStage = 0;
-    document.querySelectorAll('.stage-opt').forEach(o => o.classList.remove('selected'));
-    [1,2,3,4].forEach(n => document.getElementById('stage-form-'+n).style.display = 'none');
-    document.getElementById('stage-form-placeholder').style.display = 'block';
-    document.getElementById('submit-hint').style.display    = 'none';
-    document.getElementById('btn-submit-log').style.display = 'none';
-    renderStageOpts();
+    // 1단계 전용: 항상 1단계 폼 표시
+    pickedStage = 1;
+    [1,2,3,4].forEach(n => {
+      document.getElementById('stage-form-'+n).style.display = n === 1 ? 'block' : 'none';
+    });
+    document.getElementById('stage-form-placeholder').style.display = 'none';
+    document.getElementById('submit-hint').style.display    = 'flex';
+    document.getElementById('btn-submit-log').style.display = 'block';
   }
   if (pageId === 'dash')     { renderDash(); renderRecent(); checkRejectNotify(); }
   if (pageId === 'mylogs')   { renderMyLogs('all'); }
@@ -2058,12 +2052,16 @@ function editLog(logId) {
 // 내 탐구 로그 삭제
 async function deleteMyLog(logId) {
   const log = getLogs().find(l => l.id === logId && l.userId === CU.id);
-  if (!log) return;
-  if (!confirm(`"${log.title}" 탐구 로그를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`)) return;
+  if (!log) { toast('로그를 찾을 수 없습니다.', 't-orange'); return; }
+  const extraMsg = log.status === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
+  if (!confirm(`"${log.title}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
+  const prevSize = getLogs().length;
   await deleteLogById(logId);
-  await afterChange();
-  toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
-  renderMyLogs('all');
+  if (getLogs().length < prevSize) {
+    await afterChange();
+    toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+    renderMyLogs('all');
+  }
 }
 
 /* ══════════════════════════════
