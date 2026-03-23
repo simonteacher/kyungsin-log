@@ -29,7 +29,7 @@ html{scroll-behavior:smooth;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
 
 /* ══ AUTH ══ */
-#auth-screen{display:flex;flex-direction:column;min-height:100vh;background:#f8f4f8;position:relative;}
+#auth-screen{display:none;flex-direction:column;min-height:100vh;background:#f8f4f8;position:relative;}
 .auth-deco,.ad1,.ad2,.ad3{display:none;}
 
 /* 상단 헤더 바 */
@@ -1716,10 +1716,15 @@ async function startSessionCheck() {
     const localToken = localStorage.getItem('sq_session_token');
     const localUid   = localStorage.getItem('sq_session_uid');
     if (!localToken || localUid !== CU.id) { forceLogout(); return; }
-    await fetchUsers();
-    const fresh = getUsers().find(u => u.id === CU.id);
-    if (!fresh || fresh.sessionToken !== localToken) {
-      forceLogout();
+    try {
+      // Supabase에서 직접 단일 사용자 조회 (화면 갱신 없이)
+      const r = await supa.from('users').select('session_token').eq('id', CU.id).maybeSingle();
+      if (r.error) return; // 네트워크 오류 시 로그아웃 안 함
+      if (!r.data || r.data.session_token !== localToken) {
+        forceLogout();
+      }
+    } catch(e) {
+      console.warn('Session check error (ignored):', e);
     }
   }, 30000);
 }
@@ -2228,7 +2233,7 @@ function renderMyLogs(filter) {
         <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
           ${canGoNext ? `<button class="lc-next-btn" onclick="goNextStage(${nextStage})">${nextStage}단계 작성 →</button>` : ''}
           ${l.next ? '<span class="lc-next">꼬리 질문 →</span>' : ''}
-          <button class="lc-icon-btn" onclick="editLog(${l.id})" title="수정">✏️</button>
+          ${l.status === 'pending' ? `<button class="lc-icon-btn" onclick="editLog(${l.id})" title="수정(대기중만 가능)">✏️</button>` : ''}
           <button class="lc-icon-btn lc-del" onclick="deleteMyLog(${l.id})" title="삭제">🗑️</button>
         </div>
       </div>
@@ -2593,6 +2598,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     localStorage.removeItem('sq_session_token');
     localStorage.removeItem('sq_session_uid');
     showLoading(false);
+  } else {
+    // 저장된 세션 없으면 로그인 화면 표시
+    document.getElementById('auth-screen').style.display = 'flex';
   }
   const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
   safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
