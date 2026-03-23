@@ -1014,8 +1014,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
         <p class="page-sub" id="upload-page-sub">나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.</p>
         <div class="ibox ibox-lav" id="upload-page-hint"><div class="ibox-icon">📌</div><div class="ibox-text">등록한 탐구 로그는 <strong>담당 선생님의 검토·승인 후</strong> 마일리지가 적립됩니다.</div></div>
 
-        <!-- 기본 정보 -->
-        <div class="form-card"><h3>① 기본 정보</h3>
+        <!-- 기본 정보 (1단계만 표시) -->
+        <div class="form-card" id="upload-basic-info"><h3>① 기본 정보</h3>
           <div class="fg2"><label>탐구 제목 *</label><input type="text" id="f-title" placeholder="예) 빛의 굴절과 렌즈의 원리에 대한 탐구"/></div>
           <div class="fg2"><label>관련 교과 / 진로 연계 분야</label><input type="text" id="f-subject" placeholder="예) 물리학, 광학 엔지니어 진로"/></div>
         </div>
@@ -1840,7 +1840,9 @@ function gotoPage(pageId, btn, tabSet) {
     if (titleEl2) titleEl2.textContent = '1단계 탐구로그 등록 🌿';
     if (subEl2)   subEl2.textContent   = '나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.';
     const bannerEl2 = document.getElementById('stage-1only-banner');
-    if (bannerEl2) bannerEl2.style.display = 'block';  // 1단계 배너 복원
+    if (bannerEl2) bannerEl2.style.display = 'block';
+    const basicEl2 = document.getElementById('upload-basic-info');
+    if (basicEl2) basicEl2.style.display = 'block';
   }
   _skipUploadReset = false;  // 플래그 초기화
   if (pageId === 'dash')     { renderDash(); renderRecent(); checkRejectNotify(); }
@@ -1941,8 +1943,18 @@ function pickStage(n, el) {
 }
 
 async function submitLog() {
-  const title   = document.getElementById('f-title').value.trim();
-  const subject = document.getElementById('f-subject').value.trim() || '미분류';
+  let title   = document.getElementById('f-title').value.trim();
+  let subject = document.getElementById('f-subject').value.trim() || '미분류';
+  // 2~4단계: 제목/교과를 이전 단계 로그에서 자동 상속
+  if (pickedStage > 1) {
+    const myLogs = getLogs().filter(l => l.userId === CU.id && l.status === 'approved');
+    const prevLog = myLogs.filter(l => l.stage < pickedStage).sort((a,b) => b.stage - a.stage)[0];
+    if (prevLog) {
+      title   = title || prevLog.title;
+      subject = subject !== '미분류' ? subject : (prevLog.subject || '미분류');
+    }
+    if (!title) title = `${pickedStage}단계 탐구`;
+  }
   if (!title)       { toast('탐구 제목을 입력해 주세요.', 't-orange'); return; }
   if (!pickedStage) { toast('탐구 단계를 선택해 주세요.', 't-orange'); return; }
 
@@ -2069,8 +2081,10 @@ function goNextStage(n) {
   const bannerEl = document.getElementById('stage-1only-banner');
   if (titleEl) titleEl.textContent = titles[n] || `${n}단계 탐구로그 작성`;
   if (subEl)   subEl.textContent   = subs[n]   || '';
-  // 2/3/4단계: 1단계 전용 안내 배너 숨김
+  // 2/3/4단계: 1단계 전용 요소 숨김 (안내배너 + 기본정보)
   if (bannerEl) bannerEl.style.display = n === 1 ? 'block' : 'none';
+  const basicEl = document.getElementById('upload-basic-info');
+  if (basicEl) basicEl.style.display = n === 1 ? 'block' : 'none';
   if (hintEl)  hintEl.style.display = 'flex';
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2094,28 +2108,38 @@ function editLog(logId) {
 
 // 내 탐구 로그 삭제
 async function deleteMyLog(logId) {
-  // id를 문자열/숫자 모두 대응
   const sid = String(logId);
-  const allLogs = getLogs();
-  const log = allLogs.find(l => String(l.id) === sid);
-  const logTitle = log ? log.title : sid + '번 탐구 로그';
+  const log = getLogs().find(l => String(l.id) === sid);
+  const logTitle  = log ? log.title  : '이 탐구 로그';
   const logStatus = log ? log.status : '';
-  const extraMsg = logStatus === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
+  const extraMsg  = logStatus === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
   showLoading(true);
   try {
-    // Supabase delete - id를 그대로 전달 (bigint 처리는 SDK가 함)
-    const res = await supa.from('logs').delete().eq('id', logId);
-    if (res.error) throw res.error;
-    // 성공: 캐시 재조회
+    // user_id 조건도 함께 걸어서 본인 것만 삭제 (RLS 없이도 안전)
+    const { data, error, status } = await supa
+      .from('logs')
+      .delete()
+      .eq('id', logId)
+      .eq('user_id', CU.id)
+      .select();          // 삭제된 행을 반환받아 성공 여부 확인
+    console.log('[deleteMyLog]', { logId, status, data, error });
+    if (error) throw error;
+    // data가 빈 배열이면 조건 불일치(본인 아님 or id 없음)
+    if (!data || data.length === 0) {
+      // user_id 없이 id만으로 재시도 (저장 시 user_id 불일치 대비)
+      const r2 = await supa.from('logs').delete().eq('id', logId).select();
+      console.log('[deleteMyLog retry]', r2);
+      if (r2.error) throw r2.error;
+    }
     await fetchLogs();
-    await fetchUsers();
+    await afterChange();
     toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
     renderMyLogs('all');
     renderDash();
   } catch(e) {
-    console.error('[deleteMyLog] 오류:', e);
-    toast('삭제 실패: ' + (e.message || e.details || JSON.stringify(e)), 't-red');
+    console.error('[deleteMyLog] 최종 오류:', e);
+    toast('삭제 실패! F12 Console을 확인해주세요: ' + (e.message || JSON.stringify(e)), 't-red');
   } finally {
     showLoading(false);
   }
