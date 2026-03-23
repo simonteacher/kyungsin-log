@@ -945,7 +945,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
   </div>
   <div class="tab-nav" id="stabs" style="display:none;">
     <button class="tab-btn active" onclick="gotoPage('dash',this,'s')">📊 대시보드</button>
-    <button class="tab-btn" onclick="gotoPage('upload',this,'s')">✏️ 탐구 로그 등록</button>
+    <button class="tab-btn" onclick="gotoPage('upload',this,'s')">✏️ 1단계 탐구로그 등록</button>
     <button class="tab-btn" onclick="gotoPage('mylogs',this,'s')">📁 내 탐구 로그</button>
     <button class="tab-btn" onclick="gotoPage('ranking',this,'s')">🏆 마일리지 랭킹</button>
   </div>
@@ -1010,7 +1010,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
     <!-- 탐구 로그 등록 -->
     <div id="page-upload" class="page">
       <div class="upload-wrap">
-        <h1 class="page-title">탐구 로그 등록 🌿</h1>
+        <h1 class="page-title">1단계 탐구로그 등록 🌿</h1>
         <p class="page-sub">나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.</p>
         <div class="ibox ibox-lav"><div class="ibox-icon">📌</div><div class="ibox-text">등록한 탐구 로그는 <strong>담당 선생님의 검토·승인 후</strong> 마일리지가 적립됩니다.</div></div>
 
@@ -1032,6 +1032,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 
         <!-- 단계별 작성 폼 (단계 선택 전) -->
         <div id="stage-form-placeholder" class="form-card" style="text-align:center;padding:36px;color:var(--muted);">
+          <div style="background:linear-gradient(135deg,#fff0f5,#fce8f0);border:1.5px solid #f5c0d0;border-radius:14px;padding:18px 22px;margin-bottom:18px;text-align:left;">
+            <p style="margin:0 0 6px 0;font-size:.92rem;font-weight:700;color:#c0395a;">📌 탐구로그 등록 안내</p>
+            <p style="margin:0;font-size:.85rem;color:#7a4a5a;line-height:1.7;">
+              ✅ 여기는 <strong>1단계 등록만</strong> 가능합니다.<br/>
+              👩‍🏫 교사 승인 후 <strong>탐구목록</strong>을 클릭하여 2단계로 이어서 작성하세요.
+            </p>
+          </div>
           <div style="font-size:2rem;margin-bottom:10px;">☝️</div>
           <p style="font-size:.9rem;">위에서 탐구 단계를 먼저 선택하면<br/>단계에 맞는 작성 양식이 나타납니다.</p>
         </div>
@@ -2558,7 +2565,35 @@ function updateSingleLogModal(logId) {
 }
 
 // backdrop clicks - DOM 완전 로드 후 실행
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // ── 세션 자동 복원: 스크롤/새로고침 시 팅기지 않도록 ──
+  const savedToken = localStorage.getItem('sq_session_token');
+  const savedUid   = localStorage.getItem('sq_session_uid');
+  if (savedToken && savedUid) {
+    showLoading(true);
+    try {
+      await fetchUsers();
+      await fetchLogs();
+      const savedUser = getUsers().find(u => u.id === savedUid);
+      if (savedUser && savedUser.sessionToken === savedToken) {
+        CU = { ...savedUser };
+        document.getElementById('auth-screen').style.display = 'none';
+        if (savedUid === 'admin' || savedUser.role === 'admin') {
+          enterAdmin();
+        } else if (!savedUser.pwChanged) {
+          showChangePw();
+        } else {
+          enterApp();
+        }
+        showLoading(false);
+        return;
+      }
+    } catch(e) { console.error('Session restore failed:', e); }
+    // 복원 실패 시 세션 정리
+    localStorage.removeItem('sq_session_token');
+    localStorage.removeItem('sq_session_uid');
+    showLoading(false);
+  }
   const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
   safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
   safeOn('single-log-modal',    function(e){ if(e.target===this) closeSingleLogModal(); });
