@@ -2105,7 +2105,7 @@ function editLog(logId) {
   });
 }
 
-// 내 탐구 로그 삭제 — deleteLogById와 동일한 방식 사용
+// 내 탐구 로그 삭제 — fetch REST API 직접 호출 방식
 async function deleteMyLog(logId) {
   const log = getLogs().find(l => String(l.id) === String(logId));
   const logTitle  = log ? log.title  : '이 탐구 로그';
@@ -2114,15 +2114,33 @@ async function deleteMyLog(logId) {
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
   showLoading(true);
   try {
-    await deleteLogById(logId);
+    // Supabase REST API 직접 호출
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/logs?id=eq.' + encodeURIComponent(logId),
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + SUPA_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        }
+      }
+    );
+    const resText = await res.text();
+    console.log('[deleteMyLog] HTTP', res.status, resText);
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status + ': ' + resText);
+    }
+    // 성공
+    await fetchLogs();
     await afterChange();
     toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
     renderMyLogs('all');
     renderDash();
   } catch(e) {
-    const msg = e?.message || e?.details || JSON.stringify(e);
-    console.error('[deleteMyLog]', e);
-    alert('삭제에 실패했습니다.\n\n원인: ' + msg + '\n\nSupabase → SQL Editor에서\nGRANT ALL ON TABLE logs TO anon;\n을 실행해주세요.');
+    console.error('[deleteMyLog] 오류:', e);
+    alert('[삭제 오류]\n' + (e.message || String(e)) + '\n\nSupabase SQL Editor에서 아래 실행:\nGRANT ALL ON TABLE logs TO anon;\nALTER TABLE logs DISABLE ROW LEVEL SECURITY;');
   } finally {
     showLoading(false);
   }
