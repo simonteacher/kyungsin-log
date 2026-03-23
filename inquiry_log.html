@@ -2106,43 +2106,19 @@ function editLog(logId) {
   });
 }
 
-// 내 탐구 로그 삭제
+// 내 탐구 로그 삭제 — deleteLogById와 동일한 방식 사용
 async function deleteMyLog(logId) {
-  const sid = String(logId);
-  const log = getLogs().find(l => String(l.id) === sid);
+  const log = getLogs().find(l => String(l.id) === String(logId));
   const logTitle  = log ? log.title  : '이 탐구 로그';
   const logStatus = log ? log.status : '';
   const extraMsg  = logStatus === 'approved' ? '\n⚠️ 승인된 마일리지도 함께 취소됩니다.' : '';
   if (!confirm(`"${logTitle}" 탐구 로그를 삭제하시겠습니까?${extraMsg}\n삭제 후 복구할 수 없습니다.`)) return;
-  showLoading(true);
-  try {
-    // user_id 조건도 함께 걸어서 본인 것만 삭제 (RLS 없이도 안전)
-    const { data, error, status } = await supa
-      .from('logs')
-      .delete()
-      .eq('id', logId)
-      .eq('user_id', CU.id)
-      .select();          // 삭제된 행을 반환받아 성공 여부 확인
-    console.log('[deleteMyLog]', { logId, status, data, error });
-    if (error) throw error;
-    // data가 빈 배열이면 조건 불일치(본인 아님 or id 없음)
-    if (!data || data.length === 0) {
-      // user_id 없이 id만으로 재시도 (저장 시 user_id 불일치 대비)
-      const r2 = await supa.from('logs').delete().eq('id', logId).select();
-      console.log('[deleteMyLog retry]', r2);
-      if (r2.error) throw r2.error;
-    }
-    await fetchLogs();
-    await afterChange();
-    toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
-    renderMyLogs('all');
-    renderDash();
-  } catch(e) {
-    console.error('[deleteMyLog] 최종 오류:', e);
-    toast('삭제 실패! F12 Console을 확인해주세요: ' + (e.message || JSON.stringify(e)), 't-red');
-  } finally {
-    showLoading(false);
-  }
+  // 교사/관리자와 동일하게 deleteLogById 재사용
+  await deleteLogById(logId);
+  await afterChange();
+  toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+  renderMyLogs('all');
+  renderDash();
 }
 
 /* ══════════════════════════════
