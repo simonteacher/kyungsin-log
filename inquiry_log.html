@@ -2397,41 +2397,126 @@ function renderRecent() {
     </div>`).join('');
 }
 
+// 현재 내 탐구로그 뷰 상태 ('group' | 'detail:제목')
+let _myLogsView = 'group';
+let _myLogsFilter = 'all';
+
 function renderMyLogs(filter) {
   if (!CU) return;
+  if (filter !== undefined) _myLogsFilter = filter;
+  _myLogsView = 'group';
+  _renderMyLogsGroup();
+}
+
+function _renderMyLogsGroup() {
   let f = getLogs().filter(l => l.userId === CU.id);
-  if (filter === 'approved')           f = f.filter(l => l.status === 'approved');
-  else if (filter === 'pending')       f = f.filter(l => l.status === 'pending');
-  else if (typeof filter === 'number') f = f.filter(l => l.stage === filter);
+  if (_myLogsFilter === 'approved')           f = f.filter(l => l.status === 'approved');
+  else if (_myLogsFilter === 'pending')       f = f.filter(l => l.status === 'pending');
+  else if (typeof _myLogsFilter === 'number') f = f.filter(l => l.stage === _myLogsFilter);
+
   const el = document.getElementById('logs-grid');
-  if (!f.length) { el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);font-size:.88rem;">해당하는 탐구 로그가 없습니다 🌸</div>`; return; }
-  const myLogs = getLogs().filter(x => x.userId === CU.id);
-  el.innerHTML = [...f].reverse().map(l => {
-    const nextStage   = l.stage + 1;
-    const nextAlready = myLogs.some(x => x.stage === nextStage);
-    const canGoNext   = l.status === 'approved' && nextStage <= 4 && !nextAlready;
+  if (!f.length) {
+    el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);font-size:.88rem;">해당하는 탐구 로그가 없습니다 🌸</div>`;
+    return;
+  }
+
+  // 제목별 그룹핑
+  const groups = {};
+  [...f].forEach(l => {
+    if (!groups[l.title]) groups[l.title] = [];
+    groups[l.title].push(l);
+  });
+
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBgMap  = {1:'#fff4f0',2:'#f0f4ff',3:'#f5f0ff',4:'#f0fff8'};
+  const stageBdMap  = {1:'var(--rose)',2:'#7090e8',3:'#9070d8',4:'#40c090'};
+
+  el.innerHTML = Object.entries(groups).map(([title, glogs]) => {
+    const sorted   = glogs.sort((a,b) => a.stage - b.stage);
+    const maxStage = Math.max(...glogs.map(l => l.stage));
+    const totalPts = glogs.filter(l=>l.status==='approved').reduce((s,l)=>s+l.pts,0);
+    const hasPend  = glogs.some(l=>l.status==='pending');
+    // 다음 단계 버튼 (그룹 단위)
+    const allLogs  = getLogs().filter(x => x.userId === CU.id);
+    const lastApproved = sorted.filter(l=>l.status==='approved').pop();
+    const nextStage    = lastApproved ? lastApproved.stage + 1 : null;
+    const nextAlready  = nextStage ? allLogs.some(x => x.stage === nextStage && x.title === title) : false;
+    const canGoNext    = lastApproved && nextStage <= 4 && !nextAlready;
+
+    const stagePills = sorted.map(l => `
+      <span style="display:inline-flex;align-items:center;gap:3px;background:${stageBgMap[l.stage]};
+        border:1.5px solid ${stageBdMap[l.stage]};border-radius:20px;padding:3px 10px;
+        font-size:.72rem;font-weight:700;margin:2px 3px 2px 0;white-space:nowrap;">
+        ${stageEmoji[l.stage]} ${l.stage}단계
+        <span style="margin-left:2px;">${l.status==='approved'?'✅':l.status==='pending'?'⏳':'❌'}</span>
+      </span>`).join('');
+
     return `
-    <div class="log-card ${l.status==='pending'?'lc-wait':SLC[l.stage]}">
-      <div class="lc-top">
-        <span class="stage-tag ${SST[l.stage]}">${SNAME[l.stage]} ${SDESC[l.stage]}</span>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-          ${sBadge(l.status)}
-          <span style="font-size:.78rem;font-weight:700;color:${l.status==='approved'?'var(--rose)':'var(--muted)'};">${l.status==='approved'?'+'+l.pts+'pt':'—'}</span>
+    <div class="log-card" style="grid-column:1/-1;border-left:4px solid var(--rose);cursor:pointer;padding:16px 20px;"
+      onclick="_renderMyLogsDetail('${title.replace(/\/g,'\\\\').replace(/'/g,"\\'")}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div>
+          <h4 style="font-size:1rem;margin-bottom:3px;">${title}</h4>
+          <span style="font-size:.74rem;color:var(--muted);">${maxStage}단계까지 · ${glogs[0].subject||'미분류'}</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px;">
+          ${hasPend ? `<span style="color:var(--orange);font-size:.78rem;font-weight:700;">⏳ 검토중</span>` : `<span style="color:var(--rose);font-size:.78rem;font-weight:700;">+${totalPts}pt</span>`}
+          ${canGoNext ? `<div style="margin-top:5px;"><button class="lc-next-btn" onclick="event.stopPropagation();goNextStage(${nextStage})">${nextStage}단계 작성 →</button></div>` : ''}
         </div>
       </div>
-      <h4>${l.title}</h4>
-      <p>${l.content.substring(0,60)}${l.content.length>60?'...':''}</p>
-      <div class="lc-foot">
-        <span class="lc-date">📅 ${l.date}</span>
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-          ${canGoNext ? `<button class="lc-next-btn" onclick="goNextStage(${nextStage})">${nextStage}단계 작성 →</button>` : ''}
-          ${l.next ? '<span class="lc-next">꼬리 질문 →</span>' : ''}
-          ${l.status === 'pending' ? `<button class="lc-icon-btn" onclick="editLog(${l.id})" title="수정(대기중만 가능)">✏️</button>` : ''}
-          <button class="lc-icon-btn lc-del" onclick="deleteMyLog(${l.id})" title="삭제">🗑️</button>
-        </div>
-      </div>
+      <div>${stagePills}</div>
+      <div style="font-size:.72rem;color:var(--adm-blue);margin-top:8px;font-weight:600;">📋 클릭하여 단계별 상세 보기 →</div>
     </div>`;
   }).join('');
+}
+
+function _renderMyLogsDetail(title) {
+  _myLogsView = 'detail:' + title;
+  const allMyLogs = getLogs().filter(l => l.userId === CU.id && l.title === title).sort((a,b)=>a.stage-b.stage);
+  const el = document.getElementById('logs-grid');
+
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBgMap  = {1:'#fff8f5',2:'#f5f8ff',3:'#f8f5ff',4:'#f5fff8'};
+  const stageBdMap  = {1:'#f5c0a0',2:'#b0c0f0',3:'#c8b0f0',4:'#a0e0c0'};
+
+  el.innerHTML = `
+    <div style="grid-column:1/-1;">
+      <button onclick="renderMyLogs()"
+        style="display:inline-flex;align-items:center;gap:5px;background:none;border:1.5px solid var(--border);
+          border-radius:8px;padding:7px 14px;font-size:.82rem;font-weight:700;color:var(--navy);
+          cursor:pointer;margin-bottom:16px;">
+        ← 목록으로
+      </button>
+      <div style="font-size:.95rem;font-weight:800;color:var(--navy);margin-bottom:14px;font-family:'Noto Serif KR',serif;">
+        📋 "${title}"
+      </div>
+      ${allMyLogs.map(l => {
+        const nextStage2  = l.stage + 1;
+        const nextAlready2= getLogs().some(x=>x.userId===CU.id&&x.stage===nextStage2&&x.title===title);
+        const canGoNext2  = l.status==='approved' && nextStage2<=4 && !nextAlready2;
+        return `
+        <div class="log-card ${l.status==='pending'?'lc-wait':SLC[l.stage]}"
+          style="margin-bottom:12px;background:${stageBgMap[l.stage]};border-left-color:${stageBdMap[l.stage]};">
+          <div style="font-size:.71rem;color:var(--adm-blue);font-weight:600;margin-bottom:6px;cursor:pointer;" onclick="openMyLogDetail(${l.id})">🔍 상세 내용 보기 →</div>
+          <div class="lc-top">
+            <span class="stage-tag ${SST[l.stage]}">${stageEmoji[l.stage]} ${SNAME[l.stage]} ${SDESC[l.stage]}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+              ${sBadge(l.status)}
+              <span style="font-size:.78rem;font-weight:700;color:${l.status==='approved'?'var(--rose)':'var(--muted)'};">${l.status==='approved'?'+'+l.pts+'pt':'—'}</span>
+            </div>
+          </div>
+          <p style="margin:8px 0;font-size:.82rem;color:var(--muted);">${l.content.substring(0,80)}${l.content.length>80?'...':''}</p>
+          <div class="lc-foot">
+            <span class="lc-date">📅 ${l.date}</span>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              ${canGoNext2 ? `<button class="lc-next-btn" onclick="goNextStage(${nextStage2})">${nextStage2}단계 작성 →</button>` : ''}
+              ${l.status==='pending'?`<button class="lc-icon-btn" onclick="editLog(${l.id})" title="수정">✏️</button>`:''}
+              <button class="lc-icon-btn lc-del" onclick="deleteMyLog(${l.id})" title="삭제">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 
@@ -2701,23 +2786,96 @@ function renderStuLogsList() {
     el.innerHTML = `<div style="text-align:center;padding:36px;color:var(--muted);font-size:.86rem;">해당 상태의 탐구 로그가 없습니다.</div>`;
     return;
   }
-  el.innerHTML = [...logs].reverse().map(l => {
-    const iconCls = {1:'li-1',2:'li-2',3:'li-3',4:'li-4'}[l.stage];
-    const statusColors = {approved:'var(--green)',pending:'var(--orange)',rejected:'var(--red)'};
-    const ptsColor = l.status === 'approved' ? 'var(--rose)' : '#aaa';
+
+  // 제목별 그룹핑
+  const groups = {};
+  [...logs].reverse().forEach(l => {
+    if (!groups[l.title]) groups[l.title] = [];
+    groups[l.title].push(l);
+  });
+
+  const statusIcon = {approved:'✅',pending:'⏳',rejected:'❌'};
+  const statusColor = {approved:'var(--green)',pending:'var(--orange)',rejected:'var(--red)'};
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBg    = {1:'#fff8f0',2:'#f0f4ff',3:'#f5f0ff',4:'#f0fff8'};
+  const stageBorder= {1:'#f5c0a0',2:'#b0c0f0',3:'#c8b0f0',4:'#a0e0c0'};
+
+  el.innerHTML = Object.entries(groups).map(([title, glogs]) => {
+    const maxStage   = Math.max(...glogs.map(l => l.stage));
+    const totalPts   = glogs.filter(l=>l.status==='approved').reduce((s,l)=>s+l.pts,0);
+    const hasPending = glogs.some(l=>l.status==='pending');
+    const statusSummary = hasPending
+      ? `<span style="color:var(--orange);font-size:.75rem;font-weight:700;">⏳ 검토중</span>`
+      : `<span style="color:var(--green);font-size:.75rem;font-weight:700;">✅ ${totalPts}pt</span>`;
+
+    const stagePills = glogs.sort((a,b)=>a.stage-b.stage).map(l => `
+      <span style="display:inline-flex;align-items:center;gap:3px;background:${stageBg[l.stage]};
+        border:1.5px solid ${stageBorder[l.stage]};border-radius:20px;padding:3px 9px;
+        font-size:.73rem;font-weight:700;cursor:pointer;margin:2px;"
+        onclick="event.stopPropagation();showStuLogGroup('${title.replace(/'/g,"\\'")}',${slmUserId ? `'${slmUserId}'` : 'null'})">
+        ${stageEmoji[l.stage]} ${l.stage}단계
+        <span style="color:${statusColor[l.status]};font-size:.68rem;">${statusIcon[l.status]}</span>
+      </span>`).join('');
+
     return `
-    <div class="slm-log-row" onclick="openSingleLogModal(${l.id})">
-      <div class="slm-icon ${iconCls}">${l.stage}단계</div>
-      <div class="slm-body">
-        <h4>${l.title}</h4>
-        <p>${SNAME[l.stage]} · ${l.subject||'미분류'} · ${l.date}</p>
+    <div onclick="showStuLogGroup('${title.replace(/'/g,"\\'")}',${slmUserId ? `'${slmUserId}'` : 'null'})"
+      style="border:1.5px solid var(--adm-border);border-radius:12px;padding:14px 16px;
+        margin-bottom:10px;cursor:pointer;background:#fff;transition:all .18s;"
+      onmouseover="this.style.borderColor='var(--adm-blue)';this.style.background='var(--adm-blue-lt)'"
+      onmouseout="this.style.borderColor='var(--adm-border)';this.style.background='#fff'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div>
+          <span style="font-size:.92rem;font-weight:700;color:var(--adm-navy);">${title}</span>
+          <span style="font-size:.72rem;color:var(--muted);margin-left:8px;">${maxStage}단계까지 진행</span>
+        </div>
+        ${statusSummary}
       </div>
-      <span style="font-size:.72rem;font-weight:700;color:${statusColors[l.status]};">${
-        l.status==='approved'?'✅ 승인':l.status==='pending'?'⏳ 대기':'❌ 반려'
-      }</span>
-      <span class="slm-pts" style="color:${ptsColor};">${l.status==='approved'?'+'+l.pts+'pt':'—'}</span>
+      <div>${stagePills}</div>
     </div>`;
   }).join('');
+}
+
+// 특정 제목의 단계별 상세 보기
+function showStuLogGroup(title, userId) {
+  const uid  = userId || slmUserId;
+  const logs = getLogs().filter(l => l.userId === uid && l.title === title).sort((a,b)=>a.stage-b.stage);
+  const el   = document.getElementById('slm-list');
+
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBg    = {1:'#fff8f0',2:'#f0f4ff',3:'#f5f0ff',4:'#f0fff8'};
+  const stageBorder= {1:'#f5c0a0',2:'#b0c0f0',3:'#c8b0f0',4:'#a0e0c0'};
+  const statusIcon = {approved:'✅ 승인',pending:'⏳ 대기',rejected:'❌ 반려'};
+  const statusColor= {approved:'var(--green)',pending:'var(--orange)',rejected:'var(--red)'};
+
+  el.innerHTML = `
+    <button onclick="renderStuLogsList()"
+      style="display:inline-flex;align-items:center;gap:5px;background:none;border:1.5px solid var(--adm-border);
+        border-radius:8px;padding:6px 12px;font-size:.82rem;font-weight:700;color:var(--adm-navy);
+        cursor:pointer;margin-bottom:14px;">
+      ← 목록으로 돌아가기
+    </button>
+    <div style="font-size:.92rem;font-weight:700;color:var(--adm-navy);margin-bottom:12px;padding:0 2px;">
+      📋 "${title}" 단계별 탐구 로그
+    </div>
+    ${logs.map(l => `
+      <div onclick="openSingleLogModal(${l.id})"
+        style="border:1.5px solid ${stageBorder[l.stage]};border-radius:12px;padding:14px 16px;
+          margin-bottom:10px;cursor:pointer;background:${stageBg[l.stage]};transition:all .18s;"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.2rem;">${stageEmoji[l.stage]}</span>
+            <div>
+              <div style="font-size:.88rem;font-weight:700;color:var(--adm-navy);">${l.stage}단계 · ${SNAME[l.stage]}</div>
+              <div style="font-size:.73rem;color:#6b7a99;">${l.subject||'미분류'} · ${l.date}</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:.78rem;font-weight:700;color:${statusColor[l.status]};">${statusIcon[l.status]}</div>
+            <div style="font-size:.78rem;color:var(--rose);font-weight:700;">${l.status==='approved'?'+'+l.pts+'pt':'—'}</div>
+          </div>
+        </div>
+      </div>`).join('')}`;
 }
 
 /* ══════════════════════════════
@@ -2806,6 +2964,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   // 세션 없음 or 복원 실패 → auth-screen은 CSS 기본값(flex)으로 이미 보임
   const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
+  safeOn('my-log-detail-modal', function(e){ if(e.target===this) closeMyLogDetail(); });
   safeOn('edit-log-modal', function(e){ if(e.target===this) closeEditModal(); });
   safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
   safeOn('single-log-modal',    function(e){ if(e.target===this) closeSingleLogModal(); });
@@ -3381,6 +3540,64 @@ function showPreview(data, title) {
 /* ══════════════════════════════
    LOADING HELPER
 ══════════════════════════════ */
+
+// 학생 자신의 탐구로그 상세 보기 모달
+function openMyLogDetail(logId) {
+  const log = getLogs().find(l => String(l.id) === String(logId));
+  if (!log) return;
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageName  = {1:'호기심 발견',2:'기초 탐구',3:'심화 질문 도출',4:'후속 탐구'};
+  const statusText = {approved:'✅ 승인 완료',pending:'⏳ 검토중',rejected:'❌ 반려'};
+  const statusColor= {approved:'var(--rose)',pending:'var(--orange)',rejected:'var(--red)'};
+
+  document.getElementById('mld-stage-badge').textContent = stageEmoji[log.stage] + ' ' + log.stage + '단계 · ' + stageName[log.stage];
+  document.getElementById('mld-title').textContent = log.title;
+  document.getElementById('mld-meta').innerHTML =
+    `📅 ${log.date} &nbsp;·&nbsp; <span style="color:${statusColor[log.status]};font-weight:700;">${statusText[log.status]}</span>${log.status==='approved'?' +'+log.pts+'pt':''}`;
+
+  let html = '';
+  if (log.subject) html += `<div style="margin-bottom:14px;"><span style="background:#f5f0ff;color:#7040a0;font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:20px;">📚 ${log.subject}</span></div>`;
+  if (log.question) html += `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:#6b7a99;letter-spacing:.05em;margin-bottom:5px;">💬 탐구 질문</div>
+      <div style="font-size:.88rem;color:#3a1a2a;background:#f8f9fb;border-radius:9px;padding:11px 14px;line-height:1.7;">${log.question}</div>
+    </div>`;
+  html += `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:#6b7a99;letter-spacing:.05em;margin-bottom:5px;">📝 탐구 내용</div>
+      <div style="font-size:.87rem;color:#3a1a2a;background:#f8f9fb;border-radius:9px;padding:11px 14px;line-height:1.8;">${
+        log.content.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,'<strong style="color:var(--navy);">[$1]</strong>')
+      }</div>
+    </div>`;
+  if (log.next) html += `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:#6b7a99;letter-spacing:.05em;margin-bottom:5px;">🔗 꼬리 질문</div>
+      <div style="font-size:.87rem;color:var(--rose);background:#fff5f8;border-radius:9px;padding:11px 14px;">${log.next}</div>
+    </div>`;
+  if (log.status === 'rejected' && log.rejectReason) html += `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:var(--red);letter-spacing:.05em;margin-bottom:5px;">❌ 반려 사유</div>
+      <div style="font-size:.87rem;color:var(--red);background:#fff0f0;border-radius:9px;padding:11px 14px;">${log.rejectReason}</div>
+    </div>`;
+  document.getElementById('mld-body').innerHTML = html;
+
+  // 액션 버튼 (pending만 수정 가능)
+  const actEl = document.getElementById('mld-actions');
+  let actHtml = '';
+  if (log.status === 'pending') {
+    actHtml += `<button onclick="closeMyLogDetail();editLog(${log.id})" style="padding:9px 16px;background:var(--rose-lt);border:1.5px solid var(--rose);border-radius:9px;font-size:.87rem;font-weight:700;color:var(--rose);cursor:pointer;">✏️ 수정</button>`;
+  }
+  actHtml += `<button onclick="if(confirm('삭제하시겠습니까?')){closeMyLogDetail();deleteMyLog(${log.id})}" style="padding:9px 16px;background:#fff0f0;border:1.5px solid #f0a0a0;border-radius:9px;font-size:.87rem;font-weight:700;color:var(--red);cursor:pointer;">🗑️ 삭제</button>`;
+  actEl.innerHTML = actHtml;
+
+  const modal = document.getElementById('my-log-detail-modal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeMyLogDetail() {
+  document.getElementById('my-log-detail-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
 function showLoading(on) {
   const el = document.getElementById('loading-overlay');
   if (!el) return;
@@ -3534,6 +3751,28 @@ function goRewrite() {
     <div style="display:flex;gap:10px;margin-top:20px;">
       <button onclick="saveEditLog()" style="flex:1;background:linear-gradient(135deg,#e8506a,#c0395a);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.92rem;font-weight:700;cursor:pointer;">💾 저장하기</button>
       <button onclick="closeEditModal()" style="padding:12px 20px;background:#f5f0f2;border:none;border-radius:10px;font-size:.92rem;color:#7a4a5a;font-weight:700;cursor:pointer;">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 학생 탐구로그 상세 보기 모달 ── -->
+<div id="my-log-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(60,20,40,.45);z-index:3000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);display:flex;flex-direction:column;">
+    <!-- 헤더 -->
+    <div style="padding:22px 24px 16px;border-bottom:1px solid #f0d8e0;display:flex;justify-content:space-between;align-items:flex-start;flex-shrink:0;">
+      <div>
+        <div id="mld-stage-badge" style="display:inline-block;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:6px;background:#fff0f5;color:var(--rose);border:1.5px solid #f5c0d0;"></div>
+        <h3 id="mld-title" style="font-family:'Noto Serif KR',serif;font-size:1.05rem;font-weight:900;color:#3a1a2a;margin:0;"></h3>
+        <p id="mld-meta" style="font-size:.77rem;color:#9a7a8a;margin:5px 0 0;"></p>
+      </div>
+      <button onclick="closeMyLogDetail()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#888;flex-shrink:0;margin-left:12px;">✕</button>
+    </div>
+    <!-- 본문 -->
+    <div id="mld-body" style="padding:20px 24px;flex:1;"></div>
+    <!-- 액션 -->
+    <div style="padding:16px 24px;border-top:1px solid #f0d8e0;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+      <div id="mld-actions"></div>
+      <button onclick="closeMyLogDetail()" style="padding:9px 18px;background:#f5f0f2;border:none;border-radius:9px;font-size:.87rem;font-weight:700;color:#7a4a5a;cursor:pointer;">닫기</button>
     </div>
   </div>
 </div>
