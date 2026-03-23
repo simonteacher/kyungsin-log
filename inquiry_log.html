@@ -494,6 +494,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .log-card h4{font-size:.91rem;font-weight:700;color:var(--text);margin-bottom:4px;}
 .log-card p{font-size:.78rem;color:var(--muted);line-height:1.6;}
 .lc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:9px;border-top:1px solid var(--border);}
+.lc-next-btn{font-size:.71rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--rose),var(--rose2));border:none;border-radius:6px;padding:4px 9px;cursor:pointer;transition:opacity .15s;white-space:nowrap;}
+.lc-next-btn:hover{opacity:.85;}
+.lc-icon-btn{font-size:.75rem;border:1px solid var(--border);border-radius:6px;padding:3px 7px;cursor:pointer;background:var(--white);transition:all .15s;line-height:1;}
+.lc-icon-btn:hover{background:var(--rose-lt);border-color:var(--rose);}
+.lc-icon-btn.lc-del:hover{background:#fff0f0;border-color:var(--red);}
 .lc-date{font-size:.7rem;color:var(--muted);}
 .lc-next{font-size:.7rem;color:var(--rose);font-weight:600;}
 
@@ -1676,12 +1681,49 @@ async function doLogin() {
   await fetchLogs();
   document.getElementById('auth-screen').style.display = 'none';
 
+  // 중복 로그인 방지: session_token 갱신
+  const sessionToken = Date.now() + '_' + Math.random().toString(36).slice(2);
+  const userIdx = _users.findIndex(u => u.id === CU.id);
+  if (userIdx !== -1) {
+    _users[userIdx].sessionToken = sessionToken;
+    await saveUser(_users[userIdx]);
+    CU.sessionToken = sessionToken;
+  }
+  localStorage.setItem('sq_session_token', sessionToken);
+  localStorage.setItem('sq_session_uid', CU.id);
+
   // First-time login → force password change
   if (!user.pwChanged) {
     showChangePw();
   } else {
     enterApp();
   }
+}
+
+// 세션 유효성 주기적 확인 (30초마다)
+let _sessionCheckInterval = null;
+async function startSessionCheck() {
+  if (_sessionCheckInterval) clearInterval(_sessionCheckInterval);
+  _sessionCheckInterval = setInterval(async () => {
+    if (!CU || CU.role === 'admin') return;
+    const localToken = localStorage.getItem('sq_session_token');
+    const localUid   = localStorage.getItem('sq_session_uid');
+    if (!localToken || localUid !== CU.id) { forceLogout(); return; }
+    await fetchUsers();
+    const fresh = getUsers().find(u => u.id === CU.id);
+    if (!fresh || fresh.sessionToken !== localToken) {
+      forceLogout();
+    }
+  }, 30000);
+}
+function forceLogout() {
+  clearInterval(_sessionCheckInterval);
+  localStorage.removeItem('sq_session_token');
+  localStorage.removeItem('sq_session_uid');
+  CU = null;
+  document.getElementById('app-screen').style.display   = 'none';
+  document.getElementById('auth-screen').style.display  = 'flex';
+  toast('⚠️ 다른 기기에서 로그인되어 자동 로그아웃 되었습니다.', 't-orange');
 }
 
 function showChangePw() {
@@ -1715,6 +1757,9 @@ async function doChangePw() {
 }
 
 function doLogout() {
+  clearInterval(_sessionCheckInterval);
+  localStorage.removeItem('sq_session_token');
+  localStorage.removeItem('sq_session_uid');
   CU = null;
   document.getElementById('app-screen').style.display      = 'none';
   document.getElementById('admin-screen').style.display    = 'none';
@@ -1729,6 +1774,7 @@ function doLogout() {
    ENTER APP / ADMIN
 ══════════════════════════════ */
 function enterApp() {
+  startSessionCheck();
   document.getElementById('app-screen').style.display = 'block';
   const isTeacher = CU.role === 'teacher';
   const clsStr    = [CU.grade, CU.cls, CU.num ? CU.num+'번' : ''].filter(Boolean).join(' ');
@@ -1963,6 +2009,46 @@ function filterMyLogs(val, btn) {
   renderMyLogs(val);
 }
 
+// 다음 단계 작성 바로가기
+function goNextStage(n) {
+  const uploadTab = document.querySelectorAll('#stabs .tab-btn')[1];
+  gotoPage('upload', uploadTab, 's');
+  setTimeout(() => {
+    const opt = document.querySelector(`.stage-opt[data-stage="${n}"]`);
+    if (opt && !opt.classList.contains('locked')) {
+      pickStage(n, opt);
+      opt.classList.add('selected');
+      opt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 150);
+}
+
+// 내 탐구 로그 수정 (제목, 내용만 수정 가능 — pending 상태만)
+function editLog(logId) {
+  const log = getLogs().find(l => l.id === logId && l.userId === CU.id);
+  if (!log) return;
+  if (log.status !== 'pending') { toast('승인된 로그는 수정할 수 없습니다.', 't-orange'); return; }
+  const newTitle = prompt('탐구 제목 수정:', log.title);
+  if (newTitle === null) return;
+  if (!newTitle.trim()) { toast('제목을 입력해주세요.', 't-orange'); return; }
+  log.title = newTitle.trim();
+  saveLog(log).then(() => {
+    renderMyLogs('all');
+    toast('✏️ 탐구 로그가 수정되었습니다.', 't-green');
+  });
+}
+
+// 내 탐구 로그 삭제
+async function deleteMyLog(logId) {
+  const log = getLogs().find(l => l.id === logId && l.userId === CU.id);
+  if (!log) return;
+  if (!confirm(`"${log.title}" 탐구 로그를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`)) return;
+  await deleteLogById(logId);
+  await afterChange();
+  renderMyLogs('all');
+  toast('🗑️ 탐구 로그가 삭제되었습니다.', 't-red');
+}
+
 /* ══════════════════════════════
    APPROVE / REJECT / DELETE
 ══════════════════════════════ */
@@ -2082,12 +2168,17 @@ function renderRecent() {
 function renderMyLogs(filter) {
   if (!CU) return;
   let f = getLogs().filter(l => l.userId === CU.id);
-  if (filter === 'approved')          f = f.filter(l => l.status === 'approved');
-  else if (filter === 'pending')      f = f.filter(l => l.status === 'pending');
+  if (filter === 'approved')           f = f.filter(l => l.status === 'approved');
+  else if (filter === 'pending')       f = f.filter(l => l.status === 'pending');
   else if (typeof filter === 'number') f = f.filter(l => l.stage === filter);
   const el = document.getElementById('logs-grid');
   if (!f.length) { el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);font-size:.88rem;">해당하는 탐구 로그가 없습니다 🌸</div>`; return; }
-  el.innerHTML = f.reverse().map(l => `
+  const myLogs = getLogs().filter(x => x.userId === CU.id);
+  el.innerHTML = [...f].reverse().map(l => {
+    const nextStage   = l.stage + 1;
+    const nextAlready = myLogs.some(x => x.stage === nextStage);
+    const canGoNext   = l.status === 'approved' && nextStage <= 4 && !nextAlready;
+    return `
     <div class="log-card ${l.status==='pending'?'lc-wait':SLC[l.stage]}">
       <div class="lc-top">
         <span class="stage-tag ${SST[l.stage]}">${SNAME[l.stage]} ${SDESC[l.stage]}</span>
@@ -2100,10 +2191,17 @@ function renderMyLogs(filter) {
       <p>${l.content.substring(0,60)}${l.content.length>60?'...':''}</p>
       <div class="lc-foot">
         <span class="lc-date">📅 ${l.date}</span>
-        ${l.next ? '<span class="lc-next">꼬리 질문 →</span>' : ''}
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+          ${canGoNext ? `<button class="lc-next-btn" onclick="goNextStage(${nextStage})">${nextStage}단계 작성 →</button>` : ''}
+          ${l.next ? '<span class="lc-next">꼬리 질문 →</span>' : ''}
+          <button class="lc-icon-btn" onclick="editLog(${l.id})" title="수정">✏️</button>
+          <button class="lc-icon-btn lc-del" onclick="deleteMyLog(${l.id})" title="삭제">🗑️</button>
+        </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
+
 
 function renderRanking() {
   const users = getUsers(), logs = getLogs();
@@ -2534,6 +2632,45 @@ function closeLogDetail() {
   ldmUserId = null;
 }
 
+// 탐구 로그 텍스트 다운로드
+function downloadLogTxt(logId) {
+  const log  = getLogs().find(l => l.id === logId);
+  if (!log) return;
+  const user = getUsers().find(u => u.id === log.userId);
+  const clsStr = user ? [user.grade, user.cls, user.num?user.num+'번':''].filter(Boolean).join(' ') : '';
+  const lines = [
+    '═══════════════════════════════════',
+    '  광주경신여자고등학교 탐구 로그',
+    '═══════════════════════════════════',
+    `학생: ${log.student}${clsStr?' ('+clsStr+')':''}`,
+    `단계: ${SNAME[log.stage]} (${SDESC[log.stage]})`,
+    `제목: ${log.title}`,
+    `과목: ${log.subject||'미분류'}`,
+    `날짜: ${log.date}`,
+    `상태: ${log.status==='approved'?'✅ 승인 (+'+log.pts+'pt)':log.status==='pending'?'⏳ 승인 대기':'❌ 반려'}`,
+    '───────────────────────────────────',
+  ];
+  if (log.question) lines.push(`[탐구 질문]
+${log.question}
+`);
+  lines.push(`[탐구 내용]
+${log.content}
+`);
+  if (log.next) lines.push(`[꼬리 질문]
+${log.next}
+`);
+  if (log.rejectReason) lines.push(`[반려 사유]
+${log.rejectReason}
+`);
+  lines.push('═══════════════════════════════════');
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `탐구로그_${log.student}_${SNAME[log.stage]}_${log.title}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function renderLdmTabs() {
   const logs = getLogs().filter(l => l.userId === ldmUserId);
   const tabs = document.getElementById('ldm-stage-tabs');
@@ -2585,6 +2722,9 @@ function renderLdmContent() {
       <div class="ldm-field"><div class="ldm-field-label">📝 탐구 내용</div><div class="ldm-field-value">${l.content.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,'<strong style="color:var(--adm-navy);">[$1]</strong>')}</div></div>
       ${l.next ? `<div class="ldm-field"><div class="ldm-field-label">🔗 꼬리 질문</div><div class="ldm-field-value" style="color:var(--adm-blue);">${l.next}</div></div>` : ''}
       ${actionBtns ? `<div class="ldm-actions">${actionBtns}</div>` : ''}
+      <div class="ldm-actions" style="margin-top:6px;border-top:1px dashed rgba(100,100,150,.15);padding-top:8px;">
+        <button class="btn-sm" style="background:#f0f4ff;color:#4a6fa5;border:1px solid #c8d8f0;" onclick="downloadLogTxt(${l.id})">⬇️ 다운로드</button>
+      </div>
     </div>`;
   }).join('');
 }
