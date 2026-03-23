@@ -1024,7 +1024,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 
         <!-- 1단계 전용: placeholder 대신 안내 배너 -->
         <div id="stage-form-placeholder" style="display:none;"></div>
-        <div class="form-card" style="background:linear-gradient(135deg,#fff0f5,#fce8f0);border:1.5px solid #f5c0d0;">
+        <div id="stage-1only-banner" class="form-card" style="background:linear-gradient(135deg,#fff0f5,#fce8f0);border:1.5px solid #f5c0d0;">
           <p style="margin:0 0 4px 0;font-size:.92rem;font-weight:700;color:#c0395a;">📌 탐구로그 등록 안내</p>
           <p style="margin:0;font-size:.85rem;color:#7a4a5a;line-height:1.7;">
             ✅ 여기는 <strong>1단계 등록만</strong> 가능합니다.&nbsp;&nbsp;
@@ -1839,6 +1839,8 @@ function gotoPage(pageId, btn, tabSet) {
     const subEl2   = document.getElementById('upload-page-sub');
     if (titleEl2) titleEl2.textContent = '1단계 탐구로그 등록 🌿';
     if (subEl2)   subEl2.textContent   = '나만의 탐구 이력을 기록하고 마일리지를 쌓아 보세요.';
+    const bannerEl2 = document.getElementById('stage-1only-banner');
+    if (bannerEl2) bannerEl2.style.display = 'block';  // 1단계 배너 복원
   }
   _skipUploadReset = false;  // 플래그 초기화
   if (pageId === 'dash')     { renderDash(); renderRecent(); checkRejectNotify(); }
@@ -2064,9 +2066,12 @@ function goNextStage(n) {
   const titleEl = document.getElementById('upload-page-title');
   const subEl   = document.getElementById('upload-page-sub');
   const hintEl  = document.getElementById('upload-page-hint');
+  const bannerEl = document.getElementById('stage-1only-banner');
   if (titleEl) titleEl.textContent = titles[n] || `${n}단계 탐구로그 작성`;
   if (subEl)   subEl.textContent   = subs[n]   || '';
-  if (hintEl)  hintEl.style.display = 'flex';  // 안내 배너 유지
+  // 2/3/4단계: 1단계 전용 안내 배너 숨김
+  if (bannerEl) bannerEl.style.display = n === 1 ? 'block' : 'none';
+  if (hintEl)  hintEl.style.display = 'flex';
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   toast(`${n}단계 작성 폼으로 이동했습니다 🌸`, 't-green');
