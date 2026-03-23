@@ -2530,9 +2530,9 @@ function renderTeacherPending() {
   const el = document.getElementById('pq-list');
   if (!pend.length) { el.innerHTML = `<div class="empty-state"><div class="es-icon">🌸</div><p>현재 승인 대기 중인 탐구 로그가 없습니다.</p></div>`; return; }
   el.innerHTML = pend.map(l => `
-    <div class="pr-row">
+    <div class="pr-row" style="cursor:pointer;" onclick="openSingleLogModal(${l.id})">
       <div class="pr-info">
-        <h4>${l.title} <span class="stage-tag ${SST[l.stage]}" style="margin-left:5px;">${SNAME[l.stage]}</span></h4>
+        <h4 style="color:var(--rose);text-decoration:underline;cursor:pointer;">${l.title} <span class="stage-tag ${SST[l.stage]}" style="margin-left:5px;">${SNAME[l.stage]}</span></h4>
         <p>🌸 ${l.student}${l.cls?' ('+l.cls+')':''} · ${l.subject} · ${l.date}</p>
         <div class="pr-preview">${l.content.substring(0,120)}${l.content.length>120?'...':''}</div>
         ${l.question?`<p class="pr-extra">💬 ${l.question}</p>`:''}
@@ -2540,8 +2540,8 @@ function renderTeacherPending() {
       </div>
       <div class="pr-actions">
         <span class="pts-chip">+${l.pts}pt</span>
-        <button class="btn-ok" onclick="approveLog(${l.id})">✅ 승인</button>
-        <button class="btn-no" onclick="rejectLog(${l.id})">❌ 반려</button>
+        <button class="btn-ok" onclick="event.stopPropagation();approveLog(${l.id});renderTeacherPending();">✅ 승인</button>
+        <button class="btn-no" onclick="event.stopPropagation();openRejectModal(${l.id});">❌ 반려</button>
       </div>
     </div>`).join('');
 }
@@ -2550,9 +2550,9 @@ function renderTAllLogs() {
   const el   = document.getElementById('t-logs-grid');
   if (!logs.length) { el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted);">아직 제출된 탐구 로그가 없습니다.</div>`; return; }
   el.innerHTML = [...logs].reverse().map(l => `
-    <div class="log-card ${l.status==='pending'?'lc-wait':SLC[l.stage]}">
+    <div class="log-card ${l.status==='pending'?'lc-wait':SLC[l.stage]}" style="cursor:pointer;" onclick="openSingleLogModal(${l.id})">
       <div class="lc-top"><span class="stage-tag ${SST[l.stage]}">${SNAME[l.stage]}</span>${sBadge(l.status)}</div>
-      <h4>${l.title}</h4>
+      <h4 style="color:var(--rose);text-decoration:underline;">${l.title}</h4>
       <p style="font-size:.73rem;color:var(--rose);margin-bottom:3px;">🌸 ${l.student}${l.cls?' · '+l.cls:''}</p>
       <p>${l.content.substring(0,55)}${l.content.length>55?'...':''}</p>
       <div class="lc-foot"><span class="lc-date">📅 ${l.date}</span><span style="font-size:.77rem;font-weight:700;color:${l.status==='approved'?'var(--rose)':'var(--muted)'};">${l.status==='approved'?'+'+l.pts+'pt':'—'}</span></div>
@@ -2585,7 +2585,16 @@ function renderAdmOverview() {
   if (badge) badge.textContent = pend.length;
   document.getElementById('ov-tbody').innerHTML = pend.length === 0
     ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:22px;">대기 중인 로그가 없습니다.</td></tr>`
-    : pend.slice(0,5).map(l => `<tr><td>${l.student}${l.cls?' ('+l.cls+')':''}</td><td>${l.title}</td><td><span class="adm-badge ab-blue">${SNAME[l.stage]}</span></td><td>${l.date}</td><td style="white-space:nowrap;"><button class="btn-sm btn-sm-ok" onclick="approveLog(${l.id})">승인</button> <button class="btn-sm btn-sm-no" onclick="rejectLog(${l.id})">반려</button></td></tr>`).join('');
+    : pend.slice(0,5).map(l => `<tr>
+        <td>${l.student}${l.cls?' ('+l.cls+')':''}</td>
+        <td><span style="color:var(--adm-blue);cursor:pointer;font-weight:600;text-decoration:underline;" onclick="openSingleLogModal(${l.id})">${l.title}</span></td>
+        <td><span class="adm-badge ab-blue">${SNAME[l.stage]}</span></td>
+        <td>${l.date}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn-sm btn-sm-ok" onclick="approveLog(${l.id});renderAdmOverview();">승인</button>
+          <button class="btn-sm btn-sm-no" onclick="rejectLog(${l.id});renderAdmOverview();">반려</button>
+        </td>
+      </tr>`).join('');
 }
 function renderAdmPending() {
   const pend = getLogs().filter(l => l.status === 'pending');
@@ -2593,9 +2602,12 @@ function renderAdmPending() {
   const el = document.getElementById('a-pend-list');
   if (!pend.length) { el.innerHTML = `<div class="empty-state"><div class="es-icon">✅</div><p>승인 대기 중인 로그가 없습니다.</p></div>`; return; }
   el.innerHTML = pend.map(l => `
-    <div class="pr-row">
+    <div class="pr-row" style="cursor:pointer;" onclick="openSingleLogModal(${l.id})">
       <div class="pr-info">
-        <h4>${l.title} <span class="adm-badge ab-blue" style="margin-left:5px;">${SNAME[l.stage]}</span></h4>
+        <h4>
+          <span style="color:var(--adm-blue);text-decoration:underline;">${l.title}</span>
+          <span class="adm-badge ab-blue" style="margin-left:5px;">${SNAME[l.stage]}</span>
+        </h4>
         <p>🌸 ${l.student}${l.cls?' ('+l.cls+')':''} · ${l.subject} · ${l.date}</p>
         <div class="pr-preview">${l.content.substring(0,120)}${l.content.length>120?'...':''}</div>
         ${l.question?`<p class="pr-extra">💬 ${l.question}</p>`:''}
@@ -2605,7 +2617,7 @@ function renderAdmPending() {
         <span class="pts-chip">+${l.pts}pt</span>
         <button class="btn-ok" onclick="approveLog(${l.id})">✅ 승인</button>
         <button class="btn-no" onclick="rejectLog(${l.id})">❌ 반려</button>
-        <button class="btn-sm btn-sm-del" style="margin-top:4px;width:100%;" onclick="deleteLog(${l.id})">🗑 삭제</button>
+        <button class="btn-sm btn-sm-del" style="margin-top:4px;width:100%;" onclick="event.stopPropagation();deleteLog(${l.id})">🗑 삭제</button>
       </div>
     </div>`).join('');
 }
@@ -2713,7 +2725,7 @@ function renderStuLogsList() {
 ══════════════════════════════ */
 function openSingleLogModal(logId) {
   currentLogId = logId;
-  const log  = getLogs().find(l => l.id === logId);
+  const log  = getLogs().find(l => String(l.id) === String(logId));
   if (!log) return;
 
   document.getElementById('slg-title').textContent =
