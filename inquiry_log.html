@@ -485,6 +485,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
 .lc-3{border-color:var(--orange);}.lc-3::after{background:var(--orange);}
 .lc-4{border-color:var(--green);}.lc-4::after{background:var(--green);}
 .lc-wait{border-color:var(--orange);opacity:.85;}
+.lc-wait button{opacity:1;}
 .lc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:5px;flex-wrap:wrap;}
 .stage-tag{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;}
 .st-1{background:var(--rose-lt);color:var(--rose);}
@@ -2090,19 +2091,149 @@ function goNextStage(n) {
   toast(`${n}단계 작성 폼으로 이동했습니다 🌸`, 't-green');
 }
 
-// 내 탐구 로그 수정 (제목, 내용만 수정 가능 — pending 상태만)
+// 수정 모달 오픈
+let _editLogId = null;
 function editLog(logId) {
-  const log = getLogs().find(l => l.id === logId && l.userId === CU.id);
+  const log = getLogs().find(l => String(l.id) === String(logId));
   if (!log) return;
   if (log.status !== 'pending') { toast('승인된 로그는 수정할 수 없습니다.', 't-orange'); return; }
-  const newTitle = prompt('탐구 제목 수정:', log.title);
-  if (newTitle === null) return;
-  if (!newTitle.trim()) { toast('제목을 입력해주세요.', 't-orange'); return; }
-  log.title = newTitle.trim();
-  saveLog(log).then(() => {
+  _editLogId = logId;
+
+  // 제목/교과 세팅
+  document.getElementById('edit-title').value   = log.title   || '';
+  document.getElementById('edit-subject').value = log.subject || '';
+
+  // 기본정보: 1단계만 표시
+  const basicWrap = document.getElementById('edit-basic-wrap');
+  if (basicWrap) basicWrap.style.display = log.stage === 1 ? 'block' : 'none';
+
+  // 단계별 필드 생성
+  const fieldsWrap = document.getElementById('edit-fields-wrap');
+  const titleEl    = document.getElementById('edit-modal-title');
+  const stageNames = {1:'1단계 · 호기심 발견', 2:'2단계 · 기초 탐구', 3:'3단계 · 심화 질문 도출', 4:'4단계 · 후속 탐구'};
+  if (titleEl) titleEl.textContent = '✏️ ' + (stageNames[log.stage] || log.stage+'단계') + ' 수정';
+
+  // content 파싱
+  const c = log.content || '';
+  const getSection = (label) => {
+    const re = new RegExp('\\[' + label + '\\]\\n([\\s\\S]*?)(?=\\n\\n\\[|$)');
+    const m  = c.match(re);
+    return m ? m[1].trim() : '';
+  };
+
+  let fieldsHtml = '';
+  if (log.stage === 1) {
+    fieldsHtml = `
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">탐구 질문 *</label>
+      <input id="ef1-question" type="text" value="${(log.question||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;margin-bottom:12px;"/>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">질문 계기 *</label>
+      <textarea id="ef1-trigger" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('질문 계기')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">나의 가설</label>
+      <textarea id="ef1-hypothesis" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('나의 가설')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">꼬리 질문</label>
+      <input id="ef1-next" type="text" value="${(log.next||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;"/>`;
+  } else if (log.stage === 2) {
+    fieldsHtml = `
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">핵심 질문 *</label>
+      <input id="ef2-question" type="text" value="${(log.question||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;margin-bottom:12px;"/>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">조사 내용 *</label>
+      <textarea id="ef2-research" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('조사 내용')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">실험·관찰</label>
+      <textarea id="ef2-experiment" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('실험·관찰')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">알게 된 점 *</label>
+      <textarea id="ef2-result" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('알게 된 점')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">꼬리 질문</label>
+      <input id="ef2-next" type="text" value="${(log.next||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;"/>`;
+  } else if (log.stage === 3) {
+    fieldsHtml = `
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">이전 단계에서 이어진 질문 *</label>
+      <textarea id="ef3-from" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:60px;resize:vertical;margin-bottom:12px;">${getSection('이전 단계에서 이어진 질문')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">심화 질문 *</label>
+      <textarea id="ef3-deepq" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${(log.question||'').replace(/</g,'&lt;')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">선정 이유 *</label>
+      <textarea id="ef3-reason" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('심화 질문 설계 이유')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">후속 탐구 계획 *</label>
+      <textarea id="ef3-plan" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('후속 탐구 계획')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">꼬리 질문</label>
+      <input id="ef3-next" type="text" value="${(log.next||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;"/>`;
+  } else if (log.stage === 4) {
+    fieldsHtml = `
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">탐구 질문 *</label>
+      <input id="ef4-question" type="text" value="${(log.question||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;margin-bottom:12px;"/>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">탐구 방법 *</label>
+      <textarea id="ef4-method" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('탐구 방법')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">탐구 결과 *</label>
+      <textarea id="ef4-result" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('탐구 결과')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">결론 및 느낀 점 *</label>
+      <textarea id="ef4-conclusion" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;min-height:70px;resize:vertical;margin-bottom:12px;">${getSection('결론 및 느낀 점')}</textarea>
+      <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">꼬리 질문</label>
+      <input id="ef4-next" type="text" value="${(log.next||'').replace(/"/g,'&quot;')}" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:9px 12px;font-size:.87rem;box-sizing:border-box;"/>`;
+  }
+  if (fieldsWrap) fieldsWrap.innerHTML = fieldsHtml;
+
+  // 모달 열기
+  const modal = document.getElementById('edit-log-modal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-log-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  _editLogId = null;
+}
+
+async function saveEditLog() {
+  const log = getLogs().find(l => String(l.id) === String(_editLogId));
+  if (!log) { toast('로그를 찾을 수 없습니다.', 't-orange'); return; }
+
+  // 제목/교과 수정
+  const newTitle   = document.getElementById('edit-title').value.trim();
+  const newSubject = document.getElementById('edit-subject').value.trim();
+  if (!newTitle) { toast('탐구 제목을 입력해주세요.', 't-orange'); return; }
+  log.title   = newTitle;
+  log.subject = newSubject || log.subject;
+
+  // 단계별 내용 재조합
+  const g = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  if (log.stage === 1) {
+    const question = g('ef1-question'), trigger = g('ef1-trigger'), hypothesis = g('ef1-hypothesis');
+    if (!question || !trigger) { toast('탐구 질문과 질문 계기는 필수입니다.', 't-orange'); return; }
+    log.question = question;
+    log.content  = '[질문 계기]\n' + trigger + (hypothesis ? '\n\n[나의 가설]\n' + hypothesis : '');
+    log.next     = g('ef1-next');
+  } else if (log.stage === 2) {
+    const question = g('ef2-question'), research = g('ef2-research'), experiment = g('ef2-experiment'), result = g('ef2-result');
+    if (!question || !research || !result) { toast('핵심 질문, 조사 내용, 알게 된 점은 필수입니다.', 't-orange'); return; }
+    log.question = question;
+    log.content  = '[조사 내용]\n' + research + (experiment ? '\n\n[실험·관찰]\n' + experiment : '') + '\n\n[알게 된 점]\n' + result;
+    log.next     = g('ef2-next');
+  } else if (log.stage === 3) {
+    const fromQ = g('ef3-from'), deepQ = g('ef3-deepq'), reason = g('ef3-reason'), plan = g('ef3-plan');
+    if (!fromQ || !deepQ || !reason || !plan) { toast('모든 필수 항목을 입력해주세요.', 't-orange'); return; }
+    log.question = deepQ;
+    log.content  = '[이전 단계에서 이어진 질문]\n' + fromQ + '\n\n[심화 질문 설계 이유]\n' + reason + '\n\n[후속 탐구 계획]\n' + plan;
+    log.next     = g('ef3-next');
+  } else if (log.stage === 4) {
+    const question = g('ef4-question'), method = g('ef4-method'), result = g('ef4-result'), conclusion = g('ef4-conclusion');
+    if (!question || !method || !result || !conclusion) { toast('모든 필수 항목을 입력해주세요.', 't-orange'); return; }
+    log.question = question;
+    log.content  = '[탐구 방법]\n' + method + '\n\n[탐구 결과]\n' + result + '\n\n[결론 및 느낀 점]\n' + conclusion;
+    log.next     = g('ef4-next');
+  }
+
+  showLoading(true);
+  try {
+    await saveLog(log);
+    await afterChange();
+    closeEditModal();
     renderMyLogs('all');
     toast('✏️ 탐구 로그가 수정되었습니다.', 't-green');
-  });
+  } catch(e) {
+    toast('저장 실패: ' + (e.message || String(e)), 't-red');
+  } finally {
+    showLoading(false);
+  }
 }
 
 // 내 탐구 로그 삭제 — fetch REST API 직접 호출 방식
@@ -2681,6 +2812,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   // 세션 없음 or 복원 실패 → auth-screen은 CSS 기본값(flex)으로 이미 보임
   const safeOn = (id, fn) => { const el = document.getElementById(id); if(el) el.addEventListener('click', fn); };
+  safeOn('edit-log-modal', function(e){ if(e.target===this) closeEditModal(); });
   safeOn('stu-logs-modal',      function(e){ if(e.target===this) closeStuLogsModal(); });
   safeOn('single-log-modal',    function(e){ if(e.target===this) closeSingleLogModal(); });
   safeOn('add-modal',           function(e){ if(e.target===this) closeModal(); });
@@ -3380,5 +3512,36 @@ function goRewrite() {
   showLoading(false);
 })();
 </script>
+
+<!-- ── 학생 탐구 로그 수정 모달 ── -->
+<div id="edit-log-modal" style="display:none;position:fixed;inset:0;background:rgba(60,20,40,.45);z-index:3000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-family:'Noto Serif KR',serif;font-size:1.1rem;font-weight:900;color:#3a1a2a;margin:0;" id="edit-modal-title">✏️ 탐구 로그 수정</h2>
+      <button onclick="closeEditModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#888;line-height:1;">✕</button>
+    </div>
+
+    <!-- 기본 정보 (1단계만) -->
+    <div id="edit-basic-wrap">
+      <div style="margin-bottom:14px;">
+        <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">탐구 제목 *</label>
+        <input id="edit-title" type="text" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:10px 13px;font-size:.9rem;box-sizing:border-box;" placeholder="탐구 제목"/>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:.82rem;font-weight:700;color:#7a4a5a;display:block;margin-bottom:5px;">관련 교과 / 진로</label>
+        <input id="edit-subject" type="text" style="width:100%;border:1.5px solid #f0d0dc;border-radius:9px;padding:10px 13px;font-size:.9rem;box-sizing:border-box;" placeholder="예) 물리학, 광학 엔지니어 진로"/>
+      </div>
+      <hr style="border:none;border-top:1px solid #f0d8e0;margin:14px 0;"/>
+    </div>
+
+    <!-- 단계별 내용 필드 -->
+    <div id="edit-fields-wrap"></div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button onclick="saveEditLog()" style="flex:1;background:linear-gradient(135deg,#e8506a,#c0395a);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.92rem;font-weight:700;cursor:pointer;">💾 저장하기</button>
+      <button onclick="closeEditModal()" style="padding:12px 20px;background:#f5f0f2;border:none;border-radius:10px;font-size:.92rem;color:#7a4a5a;font-weight:700;cursor:pointer;">취소</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
