@@ -1493,11 +1493,11 @@ let _logs  = null;
 async function fetchUsers() {
   const { data, error } = await supa.from('users').select('*');
   if (error) { console.error('fetchUsers:', error); return []; }
-  // Supabase column names → camelCase 변환
   _users = data.map(u => ({
     id: u.id, pw: u.pw, name: u.name, role: u.role,
     grade: u.grade||'', cls: u.cls||'', num: u.num||'',
-    pwChanged: u.pw_changed
+    pwChanged: u.pw_changed,
+    sessionToken: u.session_token // [수정됨] 세션 토큰 추가
   }));
   return _users;
 }
@@ -1521,10 +1521,18 @@ function getUsers() { return _users || []; }
 
 async function saveUser(u) {
   const row = {
-    id: u.id, pw: u.pw, name: u.name, role: u.role,
-    grade: u.grade||'', cls: u.cls||'', num: u.num||'', pw_changed: u.pwChanged||false
+    id: u.id,
+    pw: u.pw,
+    name: u.name,
+    role: u.role,
+    grade: u.grade || '',
+    cls: u.cls || '',
+    num: u.num || '',
+    pw_changed: u.pwChanged || false,
+    session_token: u.sessionToken || null
   };
-  const { error } = await supa.from('users').upsert(row, {onConflict:'id'});
+
+  const { error } = await supa.from('users').upsert(row, { onConflict: 'id' });
   if (error) {
     console.error('saveUser error:', error);
     toast('저장 실패: ' + error.message, 't-red');
@@ -2453,7 +2461,7 @@ function _renderMyLogsGroup() {
 
     return `
     <div class="log-card" style="grid-column:1/-1;border-left:4px solid var(--rose);cursor:pointer;padding:16px 20px;"
-      onclick="_renderMyLogsDetail('${title.replace(/\/g,'\\\\').replace(/'/g,"\\'")}')">
+      const safeTitle = title.replace(/\\/g, '\\\\').replace(/'/g, "\\'");>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
         <div>
           <h4 style="font-size:1rem;margin-bottom:3px;">${title}</h4>
@@ -2677,7 +2685,7 @@ function renderAdmOverview() {
         <td>${l.date}</td>
         <td style="white-space:nowrap;">
           <button class="btn-sm btn-sm-ok" onclick="approveLog(${l.id});renderAdmOverview();">승인</button>
-          <button class="btn-sm btn-sm-no" onclick="rejectLog(${l.id});renderAdmOverview();">반려</button>
+          <button class="btn-sm btn-sm-no" onclick="openRejectModal(${l.id});">반려</button>
         </td>
       </tr>`).join('');
 }
@@ -2700,8 +2708,8 @@ function renderAdmPending() {
       </div>
       <div class="pr-actions">
         <span class="pts-chip">+${l.pts}pt</span>
-        <button class="btn-ok" onclick="approveLog(${l.id})">✅ 승인</button>
-        <button class="btn-no" onclick="rejectLog(${l.id})">❌ 반려</button>
+        <button class="btn-ok" onclick="approveLog(${l.id});renderAdmPending();">✅ 승인</button>
+        <button class="btn-no" onclick="event.stopPropagation();openRejectModal(${l.id})">❌ 반려</button>
         <button class="btn-sm btn-sm-del" style="margin-top:4px;width:100%;" onclick="event.stopPropagation();deleteLog(${l.id})">🗑 삭제</button>
       </div>
     </div>`).join('');
@@ -3140,7 +3148,7 @@ function renderLdmContent() {
     const stCls = l.status==='approved'?'st-approved':l.status==='pending'?'st-pending':'st-rejected';
     const actionBtns = l.status === 'pending' ? `
       <button class="btn-sm btn-sm-ok" onclick="approveLog(${l.id});renderAdmOverview();renderLdmTabs();renderLdmContent();">✅ 승인</button>
-      <button class="btn-sm btn-sm-no" onclick="rejectLog(${l.id});renderAdmOverview();renderLdmTabs();renderLdmContent();">❌ 반려</button>` : '';
+      <button class="btn-sm btn-sm-no" onclick="openRejectModal(${l.id});">❌ 반려</button>` : '';
     const delBtn = `<button class="btn-sm btn-sm-del" onclick="confirmDeleteLog(${l.id},'ldm')" style="margin-left:4px;">🗑 삭제</button>`;
     return `
     <div class="ldm-log-card ${stCls}">
