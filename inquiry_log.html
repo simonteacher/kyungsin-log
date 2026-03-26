@@ -1196,27 +1196,22 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--t
       <div class="log-list" id="t-ov-pending-list"></div>
     </div>
 
-    <!-- 교사: 학생 현황 (조회만, 추가/삭제 없음) -->
+    <!-- 교사: 학생 현황 (대시보드형) -->
     <div id="page-t-stulist" class="page">
-      <div class="page-hdr"><h1>🌸 학생 현황</h1><p>학생별 탐구 로그 현황을 확인하세요.</p></div>
-      <div style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
-        <div class="sec-hd" style="padding:14px 20px;border-bottom:1px solid var(--border);margin-bottom:0;">
-          <h2>학생 목록 <span id="t-stu-cnt" style="font-size:.79rem;color:var(--muted);margin-left:6px;font-weight:400;"></span></h2>
-          <input style="padding:6px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:.81rem;font-family:'Noto Sans KR',sans-serif;outline:none;min-width:160px;" type="text" id="t-stu-search" placeholder="이름 검색..." oninput="renderTeacherStudents()"/>
+      <div class="page-hdr"><h1>🌸 학생별 탐구 현황</h1><p>학생을 클릭하면 주제별 탐구 로그를 단계별로 확인할 수 있어요.</p></div>
+      <!-- 검색 + 필터 바 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+        <input style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.85rem;font-family:'Noto Sans KR',sans-serif;outline:none;min-width:190px;flex:1;max-width:280px;" type="text" id="t-stu-search" placeholder="🔍 이름 검색..." oninput="renderTeacherStudents()"/>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="t-stu-filter-btns">
+          <button onclick="tStuFilterGrade('',this)" class="tsf-btn tsf-active" style="padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;border:1.5px solid var(--rose);background:var(--rose);color:#fff;cursor:pointer;">전체</button>
+          <button onclick="tStuFilterGrade('1학년',this)" class="tsf-btn" style="padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;border:1.5px solid var(--border);background:#fff;color:var(--text);cursor:pointer;">1학년</button>
+          <button onclick="tStuFilterGrade('2학년',this)" class="tsf-btn" style="padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;border:1.5px solid var(--border);background:#fff;color:var(--text);cursor:pointer;">2학년</button>
+          <button onclick="tStuFilterGrade('3학년',this)" class="tsf-btn" style="padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;border:1.5px solid var(--border);background:#fff;color:var(--text);cursor:pointer;">3학년</button>
         </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">이름</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">학년/반/번호</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">전체</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">승인</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">대기</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">마일리지</th>
-            <th style="padding:9px 16px;font-size:.73rem;font-weight:700;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);background:#fdf6f9;">단계별 로그</th>
-          </tr></thead>
-          <tbody id="t-stu-tbody"></tbody>
-        </table>
+        <span id="t-stu-cnt" style="font-size:.79rem;color:var(--muted);margin-left:4px;white-space:nowrap;"></span>
       </div>
+      <!-- 카드 그리드 -->
+      <div id="t-stu-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;"></div>
     </div>
 
     <!-- 교사: 승인 -->
@@ -2580,35 +2575,127 @@ function renderTeacherOverview() {
     </div>`).join('');
 }
 
+let _tStuGradeFilter = '';
+function tStuFilterGrade(grade, btn) {
+  _tStuGradeFilter = grade;
+  document.querySelectorAll('.tsf-btn').forEach(b => {
+    b.classList.remove('tsf-active');
+    b.style.background = '#fff'; b.style.color = 'var(--text)'; b.style.borderColor = 'var(--border)';
+  });
+  btn.classList.add('tsf-active');
+  btn.style.background = 'var(--rose)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--rose)';
+  renderTeacherStudents();
+}
+
 function renderTeacherStudents() {
   const q    = (document.getElementById('t-stu-search')?.value || '').trim();
   const logs = getLogs();
   let stus   = getUsers().filter(u => u.role === 'student');
   if (q) stus = stus.filter(u => u.name.includes(q));
+  if (_tStuGradeFilter) stus = stus.filter(u => u.grade === _tStuGradeFilter);
 
   document.getElementById('t-stu-cnt').textContent = `총 ${stus.length}명`;
-  const tbody = document.getElementById('t-stu-tbody');
+  const container = document.getElementById('t-stu-cards');
+
   if (!stus.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);font-size:.88rem;">등록된 학생이 없습니다.</td></tr>`;
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);font-size:.9rem;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🌸</div>등록된 학생이 없습니다.
+    </div>`;
     return;
   }
-  tbody.innerHTML = stus.map(u => {
+
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBg    = {1:'#fff4ee',2:'#eef1ff',3:'#f3eeff',4:'#efffee'};
+  const stageBd    = {1:'#f5c8a0',2:'#a8baf0',3:'#c0a8f0',4:'#88d8a0'};
+
+  container.innerHTML = stus.map(u => {
     const uLogs    = logs.filter(l => l.userId === u.id);
     const approved = uLogs.filter(l => l.status === 'approved');
     const pending  = uLogs.filter(l => l.status === 'pending');
     const pts      = approved.reduce((s,l) => s+l.pts, 0);
-    const clsStr   = [u.grade, u.cls].filter(Boolean).join(' ') || '—';
-    return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:10px 16px;font-weight:700;color:var(--navy);">${u.name}</td>
-      <td style="padding:10px 16px;color:var(--muted);font-size:.83rem;">${clsStr}</td>
-      <td style="padding:10px 16px;font-weight:700;">${uLogs.length}건</td>
-      <td style="padding:10px 16px;color:var(--green);font-weight:700;">${approved.length}</td>
-      <td style="padding:10px 16px;color:var(--orange);font-weight:700;">${pending.length}</td>
-      <td style="padding:10px 16px;color:var(--rose);font-weight:700;">${pts}pt</td>
-      <td style="padding:10px 16px;">
-        <button class="filter-btn active" style="font-size:.76rem;padding:5px 12px;" onclick="openLogDetail('${u.id}')">📋 단계별 보기</button>
-      </td>
-    </tr>`;
+    const clsStr   = [u.grade, u.cls, u.num ? u.num+'번' : ''].filter(Boolean).join(' ') || '—';
+
+    // 주제별 그룹 (탐구 제목 기준)
+    const groups = {};
+    uLogs.forEach(l => { if(!groups[l.title]) groups[l.title]=[]; groups[l.title].push(l); });
+    const groupCount = Object.keys(groups).length;
+
+    // 단계 진행 표시 (최대 진행 단계)
+    const maxApproved = approved.length ? Math.max(...approved.map(l=>l.stage)) : 0;
+    const stageDots = [1,2,3,4].map(n => {
+      const hasApproved = approved.some(l=>l.stage===n);
+      const hasPending  = pending.some(l=>l.stage===n);
+      const color = hasApproved ? 'var(--green)' : hasPending ? 'var(--orange)' : '#e0dae8';
+      return `<div title="${n}단계${hasApproved?' (승인)':hasPending?' (대기)':' (없음)'}"
+        style="width:28px;height:28px;border-radius:50%;background:${color};
+        display:flex;align-items:center;justify-content:center;
+        font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0;cursor:default;">
+        ${stageEmoji[n]}
+      </div>`;
+    }).join('');
+
+    // 최근 주제 미리보기 (최대 2개)
+    const topicPreview = Object.entries(groups).slice(0,2).map(([title, glogs]) => {
+      const maxSt = Math.max(...glogs.map(l=>l.stage));
+      const hPend = glogs.some(l=>l.status==='pending');
+      return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed #f0dae8;">
+        <span style="font-size:.8rem;flex:1;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</span>
+        <span style="font-size:.68rem;font-weight:700;white-space:nowrap;
+          color:${hPend?'var(--orange)':'var(--rose)'};">${stageEmoji[maxSt]} ${maxSt}단계${hPend?' ⏳':' ✅'}</span>
+      </div>`;
+    }).join('');
+
+    return `
+    <div onclick="openStuLogsModal('${u.id}')"
+      style="background:#fff;border-radius:16px;padding:18px;cursor:pointer;
+        box-shadow:var(--shadow);border:1.5px solid var(--border);
+        transition:all .18s;position:relative;overflow:hidden;"
+      onmouseover="this.style.borderColor='var(--rose)';this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-lg)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.transform='none';this.style.boxShadow='var(--shadow)'">
+      ${pending.length ? `<div style="position:absolute;top:12px;right:12px;background:var(--orange);color:#fff;
+        font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;">⏳ 대기 ${pending.length}</div>` : ''}
+      <!-- 헤더 -->
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--rose-lt),var(--lav-lt));
+          display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">🌸</div>
+        <div style="min-width:0;">
+          <div style="font-weight:800;font-size:.98rem;color:var(--navy);">${u.name}</div>
+          <div style="font-size:.73rem;color:var(--muted);">${clsStr}</div>
+        </div>
+      </div>
+      <!-- 단계 진행 -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:13px;">
+        ${stageDots}
+        <span style="font-size:.72rem;color:var(--muted);margin-left:4px;">${maxApproved ? maxApproved+'단계 완료' : '미시작'}</span>
+      </div>
+      <!-- 통계 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:13px;">
+        <div style="background:var(--rose-lt);border-radius:8px;padding:7px 5px;text-align:center;">
+          <div style="font-size:1rem;font-weight:800;color:var(--rose);">${uLogs.length}</div>
+          <div style="font-size:.64rem;color:var(--muted);">전체</div>
+        </div>
+        <div style="background:var(--green-lt);border-radius:8px;padding:7px 5px;text-align:center;">
+          <div style="font-size:1rem;font-weight:800;color:var(--green);">${approved.length}</div>
+          <div style="font-size:.64rem;color:var(--muted);">승인</div>
+        </div>
+        <div style="background:#fff5e8;border-radius:8px;padding:7px 5px;text-align:center;">
+          <div style="font-size:1rem;font-weight:800;color:var(--rose);">${pts}pt</div>
+          <div style="font-size:.64rem;color:var(--muted);">마일리지</div>
+        </div>
+      </div>
+      <!-- 탐구 주제 미리보기 -->
+      ${groupCount ? `<div style="margin-bottom:10px;">${topicPreview}
+        ${groupCount > 2 ? `<div style="font-size:.72rem;color:var(--muted);text-align:right;padding-top:4px;">+${groupCount-2}개 주제 더보기...</div>` : ''}
+      </div>` : `<div style="font-size:.8rem;color:var(--muted);text-align:center;padding:10px 0;">아직 탐구 로그가 없습니다</div>`}
+      <!-- 버튼 -->
+      <div style="text-align:center;">
+        <button style="width:100%;padding:8px;background:linear-gradient(135deg,var(--rose-lt),var(--lav-lt));
+          border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-weight:700;
+          color:var(--navy);cursor:pointer;" onclick="event.stopPropagation();openStuLogsModal('${u.id}')">
+          📋 탐구 로그 상세 보기 →
+        </button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -2763,9 +2850,38 @@ function openStuLogsModal(userId) {
   slmFilter_ = 'all';
   const user = getUsers().find(u => u.id === userId);
   if (!user) return;
-  const clsStr = [user.grade, user.cls].filter(Boolean).join(' ');
+  const clsStr = [user.grade, user.cls, user.num ? user.num+'번' : ''].filter(Boolean).join(' ');
   document.getElementById('slm-title').textContent =
     `🌸 ${user.name}${clsStr ? ' ('+clsStr+')' : ''} 탐구 로그 목록`;
+
+  // 요약 통계
+  const logs     = getLogs().filter(l => l.userId === userId);
+  const approved = logs.filter(l => l.status === 'approved');
+  const pending  = logs.filter(l => l.status === 'pending');
+  const pts      = approved.reduce((s,l)=>s+l.pts,0);
+  document.getElementById('slm-summary').innerHTML =
+    `전체 ${logs.length}건 &nbsp;·&nbsp; <span style="color:var(--green)">승인 ${approved.length}건</span> &nbsp;·&nbsp; ` +
+    (pending.length ? `<span style="color:var(--orange)">대기 ${pending.length}건</span> &nbsp;·&nbsp; ` : '') +
+    `<span style="color:var(--rose);font-weight:700;">${pts}pt</span>`;
+
+  // 단계 진행 바
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const SNAME_s = {1:'호기심 발견',2:'기초 탐구',3:'심화 질문',4:'후속 탐구'};
+  const prog = document.getElementById('slm-stage-progress');
+  prog.innerHTML = [1,2,3,4].map(n => {
+    const hasApproved = approved.some(l=>l.stage===n);
+    const hasPending  = pending.some(l=>l.status==='pending'&&l.stage===n);
+    const bg = hasApproved ? 'var(--green)' : hasPending ? 'var(--orange)' : 'rgba(255,255,255,.5)';
+    const txt = hasApproved ? '#fff' : hasPending ? '#fff' : '#b0a0b8';
+    const bd = hasApproved ? 'var(--green)' : hasPending ? 'var(--orange)' : 'rgba(200,150,180,.3)';
+    return `<div style="flex:1;background:${bg};border:1.5px solid ${bd};border-radius:10px;
+      padding:7px 6px;text-align:center;">
+      <div style="font-size:.85rem;">${stageEmoji[n]}</div>
+      <div style="font-size:.62rem;font-weight:700;color:${txt};margin-top:2px;">${n}단계</div>
+      <div style="font-size:.58rem;color:${txt};opacity:.85;">${hasApproved?'승인':hasPending?'대기':'없음'}</div>
+    </div>`;
+  }).join('');
+
   // reset filter btns
   document.querySelectorAll('.slm-filter').forEach((b,i) => b.classList.toggle('active', i===0));
   renderStuLogsList();
@@ -2851,10 +2967,27 @@ function showStuLogGroup(title, userId) {
   const el   = document.getElementById('slm-list');
 
   const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
-  const stageBg    = {1:'#fff8f0',2:'#f0f4ff',3:'#f5f0ff',4:'#f0fff8'};
+  const stageBg    = {1:'linear-gradient(135deg,#fff8f0,#fff4ec)',2:'linear-gradient(135deg,#f0f4ff,#eceeff)',3:'linear-gradient(135deg,#f5f0ff,#ede5ff)',4:'linear-gradient(135deg,#f0fff8,#e8fff2)'};
   const stageBorder= {1:'#f5c0a0',2:'#b0c0f0',3:'#c8b0f0',4:'#a0e0c0'};
-  const statusIcon = {approved:'✅ 승인',pending:'⏳ 대기',rejected:'❌ 반려'};
+  const statusIcon = {approved:'✅ 승인완료',pending:'⏳ 검토중',rejected:'❌ 반려'};
   const statusColor= {approved:'var(--green)',pending:'var(--orange)',rejected:'var(--red)'};
+
+  // 전체 단계 진행 헤더
+  const allStages = [1,2,3,4].map(n => {
+    const l = logs.find(x=>x.stage===n);
+    if (!l) return `<div style="flex:1;border:1.5px dashed #e0d0e8;border-radius:8px;padding:6px;text-align:center;background:#fdf8fb;">
+      <div style="font-size:.8rem;">${stageEmoji[n]}</div>
+      <div style="font-size:.63rem;color:#c0b0cc;margin-top:2px;">${n}단계 없음</div>
+    </div>`;
+    const bg = l.status==='approved'?'var(--green-lt)':l.status==='pending'?'var(--orange-lt)':'var(--red-lt)';
+    const bc = l.status==='approved'?'var(--green)':l.status==='pending'?'var(--orange)':'var(--red)';
+    const tc = l.status==='approved'?'var(--green)':l.status==='pending'?'var(--orange)':'var(--red)';
+    return `<div onclick="openSingleLogModal(${l.id})" style="flex:1;background:${bg};border:1.5px solid ${bc};border-radius:8px;padding:6px;text-align:center;cursor:pointer;transition:opacity .15s;" title="클릭하여 상세 보기" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+      <div style="font-size:.85rem;">${stageEmoji[n]}</div>
+      <div style="font-size:.63rem;font-weight:700;color:${tc};margin-top:2px;">${n}단계</div>
+      <div style="font-size:.58rem;color:${tc};">${l.status==='approved'?'✅':l.status==='pending'?'⏳':'❌'}</div>
+    </div>`;
+  }).join('');
 
   el.innerHTML = `
     <button onclick="renderStuLogsList()"
@@ -2863,27 +2996,37 @@ function showStuLogGroup(title, userId) {
         cursor:pointer;margin-bottom:14px;">
       ← 목록으로 돌아가기
     </button>
-    <div style="font-size:.92rem;font-weight:700;color:var(--adm-navy);margin-bottom:12px;padding:0 2px;">
-      📋 "${title}" 단계별 탐구 로그
-    </div>
+    <div style="font-size:.98rem;font-weight:800;color:var(--navy);margin-bottom:10px;font-family:'Noto Serif KR',serif;">📋 "${title}"</div>
+    <!-- 전체 진행 요약 -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;">${allStages}</div>
+    <!-- 단계별 카드 -->
     ${logs.map(l => `
       <div onclick="openSingleLogModal(${l.id})"
-        style="border:1.5px solid ${stageBorder[l.stage]};border-radius:12px;padding:14px 16px;
-          margin-bottom:10px;cursor:pointer;background:${stageBg[l.stage]};transition:all .18s;"
-        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.2rem;">${stageEmoji[l.stage]}</span>
-            <div>
-              <div style="font-size:.88rem;font-weight:700;color:var(--adm-navy);">${l.stage}단계 · ${SNAME[l.stage]}</div>
-              <div style="font-size:.73rem;color:#6b7a99;">${l.subject||'미분류'} · ${l.date}</div>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:.78rem;font-weight:700;color:${statusColor[l.status]};">${statusIcon[l.status]}</div>
-            <div style="font-size:.78rem;color:var(--rose);font-weight:700;">${l.status==='approved'?'+'+l.pts+'pt':'—'}</div>
+        style="border:1.5px solid ${stageBorder[l.stage]};border-radius:14px;padding:16px 18px;
+          margin-bottom:12px;cursor:pointer;background:${stageBg[l.stage]};transition:all .18s;position:relative;"
+        onmouseover="this.style.transform='translateX(4px)';this.style.boxShadow='0 4px 18px rgba(180,80,110,.12)'"
+        onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+        <div style="position:absolute;top:12px;right:14px;">
+          <span style="font-size:.75rem;font-weight:700;color:${statusColor[l.status]};
+            background:rgba(255,255,255,.7);padding:3px 9px;border-radius:20px;border:1px solid ${stageBorder[l.stage]};">
+            ${statusIcon[l.status]}${l.status==='approved'?' +'+l.pts+'pt':''}
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:100px;">
+          <span style="font-size:1.6rem;">${stageEmoji[l.stage]}</span>
+          <div>
+            <div style="font-size:.92rem;font-weight:800;color:var(--navy);">${l.stage}단계 · ${SNAME[l.stage]}</div>
+            <div style="font-size:.73rem;color:var(--muted);">📚 ${l.subject||'미분류'} &nbsp;·&nbsp; 📅 ${l.date}</div>
           </div>
         </div>
+        ${l.question ? `<div style="background:rgba(255,255,255,.6);border-radius:8px;padding:8px 12px;margin-bottom:8px;border-left:3px solid ${stageBorder[l.stage]};">
+          <div style="font-size:.68rem;font-weight:700;color:var(--muted);margin-bottom:2px;">💬 탐구 질문</div>
+          <div style="font-size:.84rem;color:var(--navy);font-weight:600;">${l.question}</div>
+        </div>` : ''}
+        <div style="font-size:.8rem;color:var(--muted);line-height:1.65;">
+          ${l.content.replace(/\n/g,' · ').substring(0,130)}${l.content.length>130?'...':''}
+        </div>
+        <div style="margin-top:10px;font-size:.72rem;font-weight:700;color:var(--adm-blue);">🔍 클릭하여 전체 내용 보기 →</div>
       </div>`).join('')}`;
 }
 
@@ -2895,19 +3038,29 @@ function openSingleLogModal(logId) {
   const log  = getLogs().find(l => String(l.id) === String(logId));
   if (!log) return;
 
+  const stageEmoji = {1:'💡',2:'🔍',3:'🧠',4:'🚀'};
+  const stageBg    = {1:'linear-gradient(135deg,#fff8f0,#fff4ec)',2:'linear-gradient(135deg,#f0f4ff,#eceeff)',3:'linear-gradient(135deg,#f5f0ff,#ede5ff)',4:'linear-gradient(135deg,#f0fff8,#e8fff2)'};
+  const stageBorder= {1:'#f5c0a0',2:'#b0c0f0',3:'#c8b0f0',4:'#a0e0c0'};
+
   document.getElementById('slg-title').textContent =
-    `${SNAME[log.stage]} · ${log.title}`;
+    `${stageEmoji[log.stage]} ${log.stage}단계 · ${SNAME[log.stage]} — ${log.title}`;
   document.getElementById('slg-meta').innerHTML =
-    `🌸 ${log.student}${log.cls?' ('+log.cls+')':''} &nbsp;·&nbsp; 📅 ${log.date} &nbsp;·&nbsp; ${asBadge(log.status)}`;
+    `🌸 ${log.student}${log.cls?' ('+log.cls+')':''} &nbsp;·&nbsp; 📅 ${log.date} &nbsp;·&nbsp; ${asBadge(log.status)}${log.status==='approved'?` <span style="color:var(--rose);font-weight:700;"> +${log.pts}pt</span>`:''}`;
 
   // 본문 구성
-  let html = '';
-  if (log.subject) html += `<div style="margin-bottom:12px;"><span class="ldm-chip">📚 ${log.subject}</span></div>`;
-  if (log.question) html += `<div class="slg-field"><div class="slg-field-label">💬 탐구 질문</div><div class="slg-field-value">${log.question}</div></div>`;
+  let html = `<div style="background:${stageBg[log.stage]};border:1.5px solid ${stageBorder[log.stage]};border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:2rem;">${stageEmoji[log.stage]}</span>
+    <div>
+      <div style="font-size:.9rem;font-weight:800;color:var(--navy);">${SNAME[log.stage]} · ${SDESC[log.stage]}</div>
+      ${log.subject ? `<span style="font-size:.73rem;color:var(--muted);">📚 ${log.subject}</span>` : ''}
+    </div>
+  </div>`;
+
+  if (log.question) html += `<div class="slg-field"><div class="slg-field-label">💬 탐구 질문</div><div class="slg-field-value" style="font-size:.92rem;font-weight:600;color:var(--navy);">${log.question}</div></div>`;
   html += `<div class="slg-field"><div class="slg-field-label">📝 탐구 내용</div><div class="slg-field-value">${
-    log.content.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,'<strong style="color:var(--adm-navy);">[$1]</strong>')
+    log.content.replace(/\n/g,'<br/>').replace(/\[(.*?)\]/g,'<strong style="color:var(--adm-navy);display:block;margin-top:8px;margin-bottom:3px;">[$1]</strong>')
   }</div></div>`;
-  if (log.next) html += `<div class="slg-field"><div class="slg-field-label">🔗 꼬리 질문</div><div class="slg-field-value" style="color:var(--adm-blue);">${log.next}</div></div>`;
+  if (log.next) html += `<div class="slg-field"><div class="slg-field-label" style="color:var(--adm-blue);">🔗 꼬리 질문</div><div class="slg-field-value" style="color:var(--adm-blue);background:var(--adm-blue-lt);">${log.next}</div></div>`;
   if (log.status === 'rejected' && log.rejectReason) {
     html += `<div class="slg-field"><div class="slg-field-label" style="color:var(--red);">❌ 반려 사유</div><div class="slg-field-value" style="background:var(--red-lt);color:var(--red);">${log.rejectReason}</div></div>`;
   }
@@ -3462,38 +3615,54 @@ function showPreview(data, title) {
 
 <!-- 학생별 로그 목록 팝업 -->
 <div class="modal-bg" id="stu-logs-modal">
-  <div class="modal-box" style="width:560px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
-      <h3 id="slm-title" style="margin:0;">홍길동 학생의 탐구 로그</h3>
-      <button onclick="closeStuLogsModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);">✕</button>
+  <div class="modal-box" style="width:680px;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
+    <!-- 헤더 -->
+    <div style="padding:20px 24px 14px;background:linear-gradient(135deg,var(--rose-lt),var(--lav-lt));border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h3 id="slm-title" style="margin:0 0 4px;font-family:'Noto Serif KR',serif;font-size:1.05rem;color:var(--navy);">학생의 탐구 로그</h3>
+          <div id="slm-summary" style="font-size:.78rem;color:var(--muted);"></div>
+        </div>
+        <button onclick="closeStuLogsModal()" style="background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:8px;font-size:1rem;cursor:pointer;padding:4px 10px;color:var(--muted);">✕</button>
+      </div>
+      <!-- 단계 진행 표시 -->
+      <div id="slm-stage-progress" style="display:flex;gap:6px;margin-top:12px;"></div>
     </div>
     <!-- 필터 -->
-    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="slm-filter-row">
+    <div style="display:flex;gap:6px;padding:12px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;background:#fff;">
       <button class="slm-filter active" onclick="slmFilter('all',this)">전체</button>
       <button class="slm-filter" onclick="slmFilter('approved',this)">✅ 승인</button>
       <button class="slm-filter" onclick="slmFilter('pending',this)">⏳ 대기</button>
       <button class="slm-filter" onclick="slmFilter('rejected',this)">❌ 반려</button>
+      <div style="flex:1;"></div>
+      <button onclick="openLogDetail(slmUserId)" style="padding:5px 13px;background:var(--adm-blue);color:#fff;border:none;border-radius:8px;font-size:.77rem;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">단계별 전체 보기 →</button>
     </div>
-    <div id="slm-list"></div>
-    <div class="modal-btns" style="margin-top:1rem;">
+    <!-- 내용 (스크롤) -->
+    <div id="slm-list" style="flex:1;overflow-y:auto;padding:16px 24px;"></div>
+    <!-- 하단 버튼 -->
+    <div style="padding:12px 24px;border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
       <button class="btn-modal-cancel" onclick="closeStuLogsModal()">닫기</button>
-      <button class="btn-modal-ok" onclick="openLogDetail(slmUserId)">단계별 전체 보기 →</button>
     </div>
   </div>
 </div>
 
 <!-- 개별 로그 상세 팝업 -->
 <div class="modal-bg" id="single-log-modal">
-  <div class="modal-box" style="width:600px;max-height:88vh;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem;">
-      <div>
-        <h3 id="slg-title" style="margin:0;font-size:1rem;"></h3>
-        <div id="slg-meta" style="font-size:.76rem;color:var(--muted);margin-top:4px;"></div>
+  <div class="modal-box" style="width:640px;max-height:90vh;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+    <!-- 헤더 -->
+    <div style="padding:18px 24px 14px;flex-shrink:0;border-bottom:1px solid var(--adm-border);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;min-width:0;padding-right:12px;">
+          <h3 id="slg-title" style="margin:0 0 5px;font-size:1rem;font-family:'Noto Serif KR',serif;color:var(--navy);"></h3>
+          <div id="slg-meta" style="font-size:.76rem;color:var(--muted);"></div>
+        </div>
+        <button onclick="closeSingleLogModal()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:.9rem;cursor:pointer;color:var(--muted);flex-shrink:0;">✕</button>
       </div>
-      <button onclick="closeSingleLogModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);flex-shrink:0;">✕</button>
     </div>
-    <div id="slg-body"></div>
-    <div id="slg-actions" style="display:flex;gap:8px;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--adm-border);justify-content:space-between;align-items:center;">
+    <!-- 본문 스크롤 -->
+    <div id="slg-body" style="flex:1;overflow-y:auto;padding:20px 24px;"></div>
+    <!-- 액션 -->
+    <div id="slg-actions" style="padding:12px 24px;border-top:1px solid var(--adm-border);flex-shrink:0;display:flex;gap:8px;justify-content:space-between;align-items:center;">
       <button class="btn-modal-cancel" onclick="closeSingleLogModal()">← 목록으로</button>
       <div id="slg-action-btns" style="display:flex;gap:8px;"></div>
     </div>
