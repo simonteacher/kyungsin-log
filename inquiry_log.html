@@ -1520,17 +1520,17 @@ function getLogs()  { return _logs  || []; }
 function getUsers() { return _users || []; }
 
 async function saveUser(u) {
-  const row = {
-    id: u.id,
-    pw: u.pw,
-    name: u.name,
-    role: u.role,
-    grade: u.grade || '',
-    cls: u.cls || '',
-    num: u.num || '',
-    pw_changed: u.pwChanged || false,
-    session_token: u.sessionToken || null
-  };
+const row = {
+  id: u.id,
+  pw: u.pw,
+  name: u.name,
+  role: u.role,
+  grade: u.grade || '',
+  cls: u.cls || '',
+  num: u.num || '',
+  pw_changed: u.pwChanged || false,
+  session_token: u.sessionToken || null
+};
 
   const { error } = await supa.from('users').upsert(row, { onConflict: 'id' });
   if (error) {
@@ -2440,6 +2440,7 @@ function _renderMyLogsGroup() {
   const stageBdMap  = {1:'var(--rose)',2:'#7090e8',3:'#9070d8',4:'#40c090'};
 
   el.innerHTML = Object.entries(groups).map(([title, glogs]) => {
+  const safeTitle = encodeURIComponent(title);
     const sorted   = glogs.sort((a,b) => a.stage - b.stage);
     const maxStage = Math.max(...glogs.map(l => l.stage));
     const totalPts = glogs.filter(l=>l.status==='approved').reduce((s,l)=>s+l.pts,0);
@@ -2460,8 +2461,8 @@ function _renderMyLogsGroup() {
       </span>`).join('');
 
     return `
-    <div class="log-card" style="grid-column:1/-1;border-left:4px solid var(--rose);cursor:pointer;padding:16px 20px;"
-      const safeTitle = title.replace(/\\/g, '\\\\').replace(/'/g, "\\'");>
+        <div class="log-card" style="grid-column:1/-1;border-left:4px solid var(--rose);cursor:pointer;padding:16px 20px;"
+      onclick="_renderMyLogsDetail(decodeURIComponent('${safeTitle}'))">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
         <div>
           <h4 style="font-size:1rem;margin-bottom:3px;">${title}</h4>
